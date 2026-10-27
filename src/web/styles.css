@@ -388,3 +388,20 @@ th { background: var(--card); font-weight: 600; }
   .inspector { position: absolute; right: 0; z-index: 10; height: 100%; width: 100%; }
   .hints span:nth-child(n + 5) { display: none; }
 }
+
+/* verdicts */
+.verdict { margin-top: 10px; }
+.verdict textarea { width: 100%; background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: 13px; }
+.verdict-btns { display: flex; gap: 6px; }
+.vbtn { flex: 1; border-radius: 7px; padding: 5px 8px; font-size: 12.5px; font-weight: 600; background: var(--card); border: 1px solid var(--line); }
+.vbtn.ok { color: var(--added); border-color: color-mix(in srgb, var(--added) 50%, var(--line)); }
+.vbtn.ok:hover { background: var(--added-bg); }
+.vbtn.no { color: var(--removed); border-color: color-mix(in srgb, var(--removed) 40%, var(--line)); }
+.vbtn.no:hover { background: var(--removed-bg); }
+.verdict-state { font-size: 12.5px; font-weight: 600; margin-bottom: 6px; }
+.verdict-state.v-approve { color: var(--added); }
+.verdict-state.v-changes { color: var(--removed); }
+button.primary.danger { background: var(--removed); }
+.vchip-verdict { font-size: 11px; font-weight: 700; margin-left: 2px; }
+.vchip-verdict.v-approve { color: var(--added); }
+.vchip-verdict.v-changes { color: var(--removed); }

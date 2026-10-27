@@ -41,7 +41,7 @@ export type ReviewSummary = {
 
 export type RReview = Review & { key: string; dir: string; viewTitles: Record<string, string>; issues: Issue[] };
 
-export type CommentKind = "question" | "blocking" | "suggestion" | "nit" | "note" | "answer";
+export type CommentKind = "question" | "blocking" | "suggestion" | "nit" | "note" | "answer" | "verdict";
 
 export type Comment = {
   id: string;
@@ -53,7 +53,7 @@ export type Comment = {
   kind: CommentKind;
   text: string;
   parent?: string;
-  /** for question cards: the chosen option */
+  /** answer: the chosen option id. verdict: "approve" | "changes". */
   choice?: string;
   status: "open" | "resolved";
 };

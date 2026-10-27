@@ -166,6 +166,8 @@ A `tour` is 3–7 stops that walk through the story. Each stop names a card and 
 4. Later: `agent-review comments <folder>` (or `--json`). Each thread has an id, a kind
    (`question`, `blocking`, `suggestion`, `nit`, `note`, `answer`), the card and the variant it is on.
    `answer` entries are the reviewer's choice on a `question` card (`choice` = option id).
+   `verdict` entries are the reviewer's call on a whole variant: `choice` is `approve` or
+   `changes`. **Do not start building a `proposed` variant until it has an `approve` verdict.**
 5. Act on them in a **new variant** (`kind: "iteration"`, `respondsTo: [ids]`), then
    `agent-review reply <folder> <id> "what you did" --resolve` for each.
    Answer questions in a reply without resolving if you need the reviewer to confirm.

@@ -23,7 +23,7 @@ export function Threads(p: {
   composeTick?: number;
   onChanged(): void;
 }) {
-  const roots = p.comments.filter((c) => !c.parent && c.kind !== "answer");
+  const roots = p.comments.filter((c) => !c.parent && c.kind !== "answer" && c.kind !== "verdict");
   const [showResolved, setShowResolved] = useState(false);
   const shown = roots.filter((r) => showResolved || r.status === "open");
   const hidden = roots.length - shown.length;

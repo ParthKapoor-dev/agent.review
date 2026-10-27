@@ -1,6 +1,8 @@
 // The left panel: what this review is, what is waiting on you, and what changed in the variant shown.
 import type { Comparison } from "../core/resolve";
 import type { Comment, Issue, RReview, RVariant, RView } from "../core/types";
+import { useState } from "react";
+import { api } from "./api";
 import { Threads } from "./Comments";
 import { Markdown } from "./Rich";
 import { IssueList } from "./ReviewPage";
@@ -82,6 +84,7 @@ export function Brief(p: Props) {
             <span className="muted small">{KIND_LABEL[p.target.kind]}</span>
           </div>
           <Markdown text={p.target.summary} className="small" />
+          {p.view && <Verdict {...p} view={p.view} target={p.target} />}
           {responds.length > 0 && (
             <div className="responds">
               <div className="muted small">Responds to your comments:</div>
@@ -167,6 +170,55 @@ function Board({ title, items, cls }: { title: string; items: string[]; cls: str
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/** Approve or request changes on the variant shown. The agent reads it as a "verdict" comment. */
+function Verdict(p: Props & { view: RView; target: RVariant }) {
+  const mine = p.comments
+    .filter((c) => c.kind === "verdict" && c.view === p.view.id && c.variant === p.target.id)
+    .sort((a, b) => a.ts.localeCompare(b.ts))
+    .at(-1);
+  const [note, setNote] = useState("");
+  const [open, setOpen] = useState<"approve" | "changes" | null>(null);
+  const send = async (choice: "approve" | "changes") => {
+    await api.comment(p.reviewKey, { view: p.view.id, variant: p.target.id, kind: "verdict", choice, text: note });
+    setNote("");
+    setOpen(null);
+    p.onChanged();
+  };
+  return (
+    <div className="verdict">
+      {mine && (
+        <div className={`verdict-state v-${mine.choice}`}>
+          {mine.choice === "approve" ? "✓ You approved this" : "✗ You requested changes"}
+          {mine.text && <span className="muted"> · {mine.text}</span>}
+        </div>
+      )}
+      {open ? (
+        <>
+          <textarea
+            autoFocus
+            rows={2}
+            placeholder={open === "approve" ? "Anything to add? (optional)" : "What needs to change?"}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+          <div className="composer-row">
+            <button className="link" onClick={() => setOpen(null)}>Cancel</button>
+            <span className="spacer" />
+            <button className={`primary ${open === "changes" ? "danger" : ""}`} disabled={open === "changes" && !note.trim()} onClick={() => send(open)}>
+              {open === "approve" ? "Approve" : "Request changes"}
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="verdict-btns">
+          <button className="vbtn ok" onClick={() => setOpen("approve")}>Approve {p.target.label}</button>
+          <button className="vbtn no" onClick={() => setOpen("changes")}>Request changes</button>
+        </div>
+      )}
     </div>
   );
 }

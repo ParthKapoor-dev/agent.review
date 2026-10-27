@@ -20,6 +20,11 @@ const HELP = `agent-review — review an AI agent's work on a canvas
         --resolve          and mark it resolved
   resolve <dir> <id>       Mark a thread resolved (e.g. after a new variant addresses it)
   init [dir] --title "…"   Start a review folder with one view
+  from-git [repo]          Build a "changes" view from a git diff (or add the next variant)
+        --base HEAD        diff from (default HEAD; with --head, uses base...head)
+        --head <rev>       diff to (default: the working tree, including new files)
+        --out <dir>        review folder (default <repo>/.agent-review)
+        --variant <id> --label "…" --kind actual|iteration|proposed|… --extends <id>
   schema [review|view]     Print the JSON Schema for review.json or views/<id>.json
   guide                    Print the authoring guide for agents (docs/AGENT_GUIDE.md)
 `;
@@ -52,6 +57,14 @@ async function main() {
       json: { type: "boolean", default: false },
       resolve: { type: "boolean", default: false },
       title: { type: "string" },
+      base: { type: "string" },
+      head: { type: "string" },
+      out: { type: "string" },
+      view: { type: "string", default: "changes" },
+      variant: { type: "string" },
+      label: { type: "string" },
+      kind: { type: "string" },
+      extends: { type: "string" },
     },
   });
 
@@ -83,7 +96,8 @@ async function main() {
       if (!ts.length) return console.log("No open comments.");
       for (const t of ts) {
         const where = [t.view, t.node, t.variant && `@${t.variant}`].filter(Boolean).join(" › ");
-        const head = t.kind === "answer" ? `ANSWER ${t.choice ?? ""}` : t.kind.toUpperCase();
+        const head =
+          t.kind === "answer" ? `ANSWER ${t.choice ?? ""}` : t.kind === "verdict" ? (t.choice === "approve" ? "APPROVED" : "CHANGES REQUESTED") : t.kind.toUpperCase();
         console.log(`[${t.id}] ${head}  ${where}  (${t.status})`);
         if (t.text) console.log(indent(t.text));
         for (const r of t.replies) console.log(`    ↳ ${r.author}: ${r.text.replace(/\n/g, "\n      ")}`);
@@ -140,6 +154,28 @@ async function main() {
         ) + "\n",
       );
       console.log(`Created ${dir}. Run: agent-review serve ${p[0] ?? "."}`);
+      return;
+    }
+    case "from-git": {
+      const { fromGit } = await import("./core/git");
+      const repo = resolve(p[0] ?? ".");
+      const out = resolve(o.out ?? join(repo, ".agent-review"));
+      const vf = join(out, "views", `${o.view}.json`);
+      const n = existsSync(vf) ? (JSON.parse(readFileSync(vf, "utf8")).variants?.length ?? 0) : 0;
+      const kind = (o.kind ?? (n === 0 ? "actual" : "iteration")) as "actual";
+      const r = await fromGit({
+        repo,
+        out,
+        base: o.base,
+        head: o.head,
+        view: o.view!,
+        variant: o.variant ?? (n === 0 ? "changes" : `iteration-${n + 1}`),
+        label: o.label ?? (n === 0 ? "Changes" : `Iteration ${n + 1}`),
+        kind,
+        extends: o.extends,
+      });
+      console.log(`${r.files} files → ${r.viewFile} (variant ${r.variant}${r.extends ? `, extends ${r.extends}` : ""})`);
+      console.log(`Next: retitle the cards to say what each change does, then: agent-review validate ${out}`);
       return;
     }
     case "schema": {

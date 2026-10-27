@@ -94,7 +94,9 @@ export function Inspector(p: Props) {
             const b = (n as never)[f];
             if (a === undefined && b === undefined) return null;
             if (codeOf(a)?.code === codeOf(b)?.code) return null;
-            return <CodeDiff key={f} before={a} after={b} split={split} name={f === "code" ? undefined : f} />;
+            const path = n.type === "diff" ? n.path : undefined;
+            const label = { code: undefined, after: `${path ?? "after"} · new version`, before: `${path ?? "before"} · base version`, patch: "patch" }[f];
+            return <CodeDiff key={f} before={a} after={b} split={split} name={label} />;
           })}
           {fieldChanges(old, n).map((c) => (
             <div className="field-change" key={c.key}>

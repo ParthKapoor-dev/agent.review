@@ -77,7 +77,7 @@ export async function serve(opts: { roots: string[]; port: number; host: string 
           const dir = dirFor(req.params.key);
           if (!dir) return notFound("Review");
           const b = (await req.json()) as Partial<Comment>;
-          if (!b.text?.trim() && b.kind !== "answer") return json({ error: "Empty comment" }, 400);
+          if (!b.text?.trim() && b.kind !== "answer" && b.kind !== "verdict") return json({ error: "Empty comment" }, 400);
           if (!b.view) return json({ error: "view is required" }, 400);
           const c = addComment(dir, {
             author: "reviewer",

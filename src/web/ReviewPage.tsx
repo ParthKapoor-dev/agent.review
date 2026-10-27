@@ -316,6 +316,10 @@ export function ReviewPage({ reviewKey }: { reviewKey: string }) {
                 {i > 0 && <span className="vchip-arrow">→</span>}
                 <span className="vchip-dot" />
                 {v.label}
+                {(() => {
+                  const vd = comments.filter((c) => c.kind === "verdict" && c.view === view.id && c.variant === v.id).sort((a, b) => a.ts.localeCompare(b.ts)).at(-1);
+                  return vd ? <span className={`vchip-verdict v-${vd.choice}`} title={vd.choice === "approve" ? "Approved" : "Changes requested"}>{vd.choice === "approve" ? "✓" : "✗"}</span> : null;
+                })()}
               </button>
             ))}
           </div>
