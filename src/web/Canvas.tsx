@@ -199,7 +199,11 @@ function Pane(
       const H = el?.clientHeight ?? 700;
       const boxes = [...Object.values(view.layout.frames), ...Object.values(view.layout.nodes)];
       if (!boxes.length) return;
-      const sel = p.selected ? view.layout.nodes[p.selected] : undefined;
+      // Side by side: start at the first change, since that is what the mode is for.
+      const firstChange = pane.compared && !pane.ghosts
+        ? [...pane.states].filter(([, st]) => st !== "same").map(([id]) => view.layout.nodes[id]).filter(Boolean).sort((a, b) => a!.x - b!.x || a!.y - b!.y)[0]
+        : undefined;
+      const sel = (p.selected ? view.layout.nodes[p.selected] : undefined) ?? firstChange;
       if (sel) return void inst.setCenter(sel.x + sel.w / 2, sel.y + sel.h / 2, { zoom: 0.9 });
       const minX = Math.min(...boxes.map((b) => b.x));
       const minY = Math.min(...boxes.map((b) => b.y));

@@ -300,6 +300,11 @@ export function ReviewPage({ reviewKey }: { reviewKey: string }) {
 
       {view && target && (
         <div className="variant-bar">
+          {!briefOpen && (
+            <button className="brief-toggle" onClick={() => setBriefOpen(true)} title="Show the brief (b)">
+              ☰ Brief
+            </button>
+          )}
           <div className="vb-chain">
             {view.variants.map((v, i) => (
               <button
@@ -368,11 +373,6 @@ export function ReviewPage({ reviewKey }: { reviewKey: string }) {
           />
         )}
         <div className="canvas-wrap">
-          {!briefOpen && (
-            <button className="brief-toggle" onClick={() => setBriefOpen(true)} title="Brief (b)">
-              ☰ Brief
-            </button>
-          )}
           {vw.error && <div className="banner error">{vw.error}</div>}
           {!view && vw.data && <div className="page-error"><h2>This view has errors</h2><IssueList issues={vw.data.issues} /></div>}
           {view && target && cmp && (

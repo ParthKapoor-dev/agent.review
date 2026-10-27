@@ -25,7 +25,11 @@ function footText(n: RNode): string | undefined {
   if (n.type === "step" && n.inputs?.length)
     return `in: ${n.inputs.map((i) => (typeof i === "string" ? i : i.name)).join(", ")}`;
   if (n.type === "diff") return n.path;
-  if (n.type === "test") return n.command ? "runnable" : undefined;
+  if (n.type === "test") {
+    const one = (v: unknown) => (v === undefined ? "" : typeof v === "string" ? v : JSON.stringify(v).replace(/"/g, ""));
+    if (n.actual !== undefined && n.result === "fail") return `got ${one(n.actual)}`;
+    return n.expected !== undefined ? `expects ${one(n.expected)}` : undefined;
+  }
   if (n.type === "question") return `${n.options?.length ?? 0} options`;
   if (n.type === "unverified") return `${n.items.length} items`;
   if (n.type === "claim") return n.evidence?.length ? `${n.evidence.length} evidence` : "no evidence";
