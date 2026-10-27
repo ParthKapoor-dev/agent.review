@@ -278,7 +278,7 @@ export function ReviewPage({ reviewKey }: { reviewKey: string }) {
               key={v}
               className={v === viewId ? "on" : ""}
               onClick={() => setQ({ view: v, v: undefined, vs: undefined, node: undefined }, true)}
-              title={`View ${i + 1} (, and . to switch)`}
+              title={`${review.viewTitles[v] ?? v}\nView ${i + 1} (, and . to switch)`}
             >
               {review.viewTitles[v] ?? v}
               {comments.some((c) => c.view === v && c.status === "open" && !c.parent && c.author === "reviewer") && <i className="dot" />}

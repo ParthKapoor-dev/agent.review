@@ -20,12 +20,13 @@ export type RVariant = {
 };
 
 export type Box = { x: number; y: number; w: number; h: number };
+export type Point = { x: number; y: number };
 
 export type Issue = { level: "error" | "warning"; file: string; path?: string; message: string };
 
 export type RView = Omit<View, "variants"> & {
   variants: RVariant[];
-  layout: { nodes: Record<string, Box>; frames: Record<string, Box> };
+  layout: { nodes: Record<string, Box>; frames: Record<string, Box>; edges: Record<string, Point[]> };
 };
 
 export type ReviewSummary = {

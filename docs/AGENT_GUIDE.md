@@ -15,6 +15,12 @@ draw layouts or diffs: give each card a stable `id` and the app lays out, colour
 
 Use `<project>/.agent-review/` in a code repo, or the task's own folder (for example
 `tasks/<TICKET>/review/`) elsewhere. Start one with `agent-review init <folder> --title "…"`.
+For a git change, `agent-review from-git <repo>` writes a "changes" view for you (one card per
+file); retitle its cards to say what each change does.
+
+The review `id` is its address in the app (`/r/<id>`). Keep it stable once you have shared it.
+Paths in `refs`, `evidence`, `image.src` and `{file}` are relative to `review.json`, or absolute.
+The app only serves files that live under the review folder, so copy evidence into `assets/`.
 
 ## 2. What to put in front of the reviewer
 
@@ -36,16 +42,22 @@ Write for someone who has five minutes and did not watch you work.
 
 ## 3. Views: which maps to make
 
+Give each view a short `title` (2–4 words, it is a tab) and put the sentence in `description`.
 Typical set; make only what helps:
 
 | View | Frames (columns) | Cards |
 |---|---|---|
 | **flow**: how it works | the stages of the request or process (Request → Checks → Data → Response) | `step` per step / function / component, edges for calls and data |
 | **tests**: what proves it | Normal use · Attacks · Edge cases | `test` per case with `inputs`, `expected`, `actual`, `result`, `command` |
-| **checks**: decisions and trust | Needs your decision · What I checked · Not checked | `question`, `claim`, `unverified`, `diagram`, `table` |
+| **checks**: decisions and trust | Needs your decision · What I checked · Not checked | `question`, `claim`, `unverified`; supporting `diagram` / `table` cards go next to the claim they support |
 
 For a code change you can also make a **changes** view with a `diff` card per hunk group, framed as
 Main change → Logic → Tests → Docs.
+
+**How big is a card?** One card per thing the reviewer would check on its own. In a step chain,
+that is usually one step; merge trivial neighbours (a step that only reads input into a variable)
+into the next real one and say so in `summary`. A whole method is a card only in a view whose
+cards are methods (a "callers" or "system" view).
 
 ## 4. Variants: current → proposed → actual → iteration
 
@@ -65,6 +77,15 @@ today). Every other variant extends one and lists **only what differs**:
 | `actual` | what you actually built. Call out every difference from `proposed` with `change`. |
 | `iteration` | after review comments. Set `respondsTo`. |
 | `alternative` | another option to choose between (extends the same parent as the option it competes with) |
+
+The root does not have to be `current`. A view with nothing "before" (planned tests, the checks
+view) has a single root of whatever kind fits, e.g. `proposed` for planned tests; add an `actual`
+child when they have been run.
+
+Edges: an edge in a child with the same id as an inherited one (default `"<from>-><to>"`) replaces
+it, which is how you change a label. Removing a card also removes its edges; you don't need to
+list them. Edge fields: `from`, `to`, `label`, `style` (`solid` | `dashed`), and `tone`:
+`danger` (carries untrusted or unsafe data), `safe` (validated), `muted` (incidental).
 
 Never rewrite an earlier variant after the reviewer has seen it. Add a new one. The reviewer's
 marks are tied to card content; changing an old variant resets them.
@@ -87,9 +108,27 @@ All cards have `id`, `type`, `title`, and optional `frame`, `summary` (≤ 2 lin
 | `table` | `columns`, `rows` |
 | `image` | `src` (path under the review folder, or URL) |
 
-`code`, `before`, `after`, `patch` take a string, or `{ "code": "…", "lang": "sql" }`, or a file
-reference `{ "file": "assets/method.sql", "lines": "10-40" }` (relative to `review.json`). For a
-low-code platform, export the step's source to `assets/` and reference it; the app reads it.
+Field shapes:
+
+| field | shape |
+|---|---|
+| `refs` | `[{ "label"?, "path"?, "lines"?, "url"? }]` |
+| `evidence` | `[{ "label"?, "path"?, "lines"?, "url"?, "text"? }]`; `text` for a short quote or result |
+| `inputs`, `outputs` (step) | `["name", …]` or `[{ "name", "type"?, "note"? }]` |
+| `inputs`, `expected`, `actual` (test) | any JSON value; use the same shape for `expected` and `actual` so they compare |
+| `options` | `[{ "id", "label", "detail"? }]` |
+| `items` (unverified) | `[{ "text", "why"? }]` |
+| `tags` | free strings. `not requested` (or `out of scope`) is highlighted; others are labels |
+| `code`, `before`, `after`, `patch` | a string, `{ "code", "lang"? }`, or `{ "file", "lines"?, "lang"? }` |
+
+`lines` is `"12"` or `"12-40"`. For `{file}` the language comes from the extension; set `lang`
+to override. For a low-code platform, export each step's source to `assets/` and reference it;
+the app reads it. Use the same reference in two variants and edit the file between them only if
+the variants really share it. Otherwise give each variant its own file.
+
+A planned test that hasn't run: `result: "pending"` and no `actual`. If `command` needs something
+that doesn't exist yet (an id that's created on publish), write it with a visible placeholder like
+`<draft-uuid>`, and add it to the `unverified` card.
 
 Put the same `code` field on a card in two variants and the app shows the diff between them. You
 do not need a `diff` card for that.
@@ -160,7 +199,9 @@ A `tour` is 3–7 stops that walk through the story. Each stop names a card and 
 ## 6. The loop
 
 1. Write or update the files.
-2. `agent-review validate <folder>`: fix every error. Errors name the file and the field.
+2. `agent-review validate <folder>`: fix every error. Errors name the file, the card and the field;
+   a card with an error is left off the canvas until fixed, so fix the first error on a card first.
+   `agent-review schema view` prints the full JSON Schema if you need it.
 3. Tell the reviewer the folder path, and what you need from them. If the app is already running
    (`agent-review serve <root>`), it reloads by itself.
 4. Later: `agent-review comments <folder>` (or `--json`). Each thread has an id, a kind

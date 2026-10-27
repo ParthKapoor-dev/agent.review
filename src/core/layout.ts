@@ -1,7 +1,7 @@
 // One layout for the union of every variant's nodes, so switching variants never moves a card.
 // Frames become ELK compound nodes laid out left-to-right (or top-down) in their declared order.
 import ELK, { type ElkNode, type ElkExtendedEdge } from "elkjs/lib/elk-api.js";
-import type { Box, RVariant } from "./types";
+import type { Box, Point, RVariant } from "./types";
 import type { View } from "./schema";
 import { CARD_W, cardHeight } from "./size";
 
@@ -24,7 +24,7 @@ const OTHER = "__other";
 export async function layoutView(
   view: Pick<View, "frames" | "direction">,
   variants: RVariant[],
-): Promise<{ nodes: Record<string, Box>; frames: Record<string, Box> }> {
+): Promise<{ nodes: Record<string, Box>; frames: Record<string, Box>; edges: Record<string, Point[]> }> {
   // Union: later variants win for the node's frame; height is the max over variants.
   const union = new Map<string, { frame?: string; h: number }>();
   const edges = new Map<string, { from: string; to: string }>();
@@ -58,6 +58,10 @@ export async function layoutView(
           "elk.layered.spacing.nodeNodeBetweenLayers": "90",
           "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
           "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
+          "elk.edgeRouting": "ORTHOGONAL",
+          "elk.layered.spacing.edgeNodeBetweenLayers": "24",
+          "elk.spacing.edgeNode": "18",
+          "elk.spacing.edgeEdge": "10",
         },
         children: frameIds.map((fid, i) => ({
           id: `frame:${fid}`,
@@ -81,6 +85,9 @@ export async function layoutView(
           "elk.spacing.nodeNode": "36",
           "elk.layered.spacing.nodeNodeBetweenLayers": "90",
           "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
+          "elk.edgeRouting": "ORTHOGONAL",
+          "elk.spacing.edgeNode": "18",
+          "elk.spacing.edgeEdge": "10",
         },
         children: [...union].map(([id, n]) => leaf(id, n.h)),
         edges: elkEdges,
@@ -96,7 +103,10 @@ export async function layoutView(
   const out = await elk.layout(graph);
   const nodes: Record<string, Box> = {};
   const frames: Record<string, Box> = {};
+  const edgesOut: Record<string, Point[]> = {};
+  const origin: Record<string, Point> = { root: { x: 0, y: 0 } };
   const walk = (n: ElkNode, ox: number, oy: number) => {
+    origin[n.id] = { x: ox, y: oy };
     for (const c of n.children ?? []) {
       const x = ox + (c.x ?? 0);
       const y = oy + (c.y ?? 0);
@@ -108,6 +118,17 @@ export async function layoutView(
     }
   };
   walk(out, 0, 0);
+  // ELK's routes, in absolute coordinates (each edge is relative to its container).
+  const collect = (n: ElkNode) => {
+    for (const e of n.edges ?? []) {
+      const s = e.sections?.[0];
+      if (!s) continue;
+      const o = origin[(e as { container?: string }).container ?? n.id] ?? { x: 0, y: 0 };
+      edgesOut[e.id] = [s.startPoint, ...(s.bendPoints ?? []), s.endPoint].map((pt) => ({ x: pt.x + o.x, y: pt.y + o.y }));
+    }
+    for (const c of n.children ?? []) collect(c);
+  };
+  collect(out);
   // Frames read as columns (or rows): give them a shared top edge and the same depth.
   const fs = Object.values(frames);
   if (fs.length) {
@@ -120,5 +141,5 @@ export async function layoutView(
       b[len] = hi - lo;
     }
   }
-  return { nodes, frames };
+  return { nodes, frames, edges: edgesOut };
 }

@@ -65,7 +65,30 @@ describe("resolveVariants", () => {
     const msgs = resolveVariants(v, "v.json").issues.map((i) => i.message).join("\n");
     expect(msgs).toContain("Cycle");
     expect(msgs).toContain("Unknown parent variant 'nope'");
-    expect(msgs).toContain("missing node");
+    expect(msgs).toContain("does not exist (a → zz)");
+  });
+
+  test("a bad card is reported once, not again in every child or edge", () => {
+    const v = view([
+      { ...root, nodes: [...root.nodes, { id: "bad", type: "step", title: "x", inputs: "oops" }], edges: [...root.edges, { from: "a", to: "bad" }] },
+      { id: "p", label: "P", kind: "proposed", extends: "cur", nodes: [{ id: "bad", title: "y" }], edges: [{ from: "bad", to: "b" }] },
+      { id: "q", label: "Q", kind: "iteration", extends: "p" },
+    ]);
+    const issues = resolveVariants(v, "v.json").issues;
+    expect(issues).toHaveLength(1);
+    expect(issues[0]!.message).toContain("inputs is a list");
+  });
+
+  test("removing a card drops its edges without warnings", () => {
+    const v = view([root, { id: "p", label: "P", kind: "proposed", extends: "cur", remove: ["b"] }]);
+    const { variants, issues } = resolveVariants(v, "v.json");
+    expect(issues).toEqual([]);
+    expect(variants[1]!.edges).toEqual([]);
+  });
+
+  test("an edge with an inherited id replaces it", () => {
+    const v = view([root, { id: "p", label: "P", kind: "proposed", extends: "cur", edges: [{ from: "a", to: "b", label: "now" }] }]);
+    expect(resolveVariants(v, "v.json").variants[1]!.edges[0]!.label).toBe("now");
   });
 
   test("exactly one root", () => {

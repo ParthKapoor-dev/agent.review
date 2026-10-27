@@ -46,6 +46,11 @@ export function resolveVariants(view: View, file: string): { variants: RVariant[
       message: `Exactly one variant must have no 'extends' (found ${roots.length}: ${roots.map((r) => r.id).join(", ") || "none"})`,
     });
 
+  // Raw (unparsed) cards per variant, so a child can patch a card whose parent version was invalid
+  // without the error being reported again in every descendant.
+  const raws = new Map<string, Map<string, Record<string, unknown>>>();
+  const reported = new Set<string>();
+
   const build = (vid: string, seen: string[]): RVariant | undefined => {
     if (done.has(vid)) return done.get(vid);
     const v = byId.get(vid);
@@ -61,31 +66,47 @@ export function resolveVariants(view: View, file: string): { variants: RVariant[
       if (!parent)
         issues.push({ level: "error", file, path: `variants.${vid}.extends`, message: `Unknown parent variant '${v.extends}'` });
       else {
-        nodes = new Map(parent.nodes.map((n) => [n.id, { ...n, change: undefined }]));
+        nodes = new Map([...raws.get(parent.id)!].map(([id, n]) => [id, { ...n, change: undefined }]));
         edges = new Map(parent.edges.map((e) => [e.id, e]));
       }
     }
+    const removed = new Set<string>();
     for (const rid of v.remove) {
+      removed.add(rid);
       if (!nodes.delete(rid) && !edges.delete(rid))
-        issues.push({ level: "warning", file, path: `variants.${vid}.remove`, message: `'${rid}' is not a node or edge in the parent` });
+        issues.push({ level: "warning", file, path: `variants.${vid}.remove`, message: `'${rid}' is not a card or edge in '${v.extends ?? "(root)"}'` });
     }
+    const touched = new Set<string>();
     for (const patch of v.nodes) {
+      touched.add(patch.id);
       const prev = nodes.get(patch.id);
       nodes.set(patch.id, prev ? { ...prev, ...patch } : { ...patch });
     }
+    // An edge with the id of an inherited one replaces it (e.g. to change its label).
     for (const e of v.edges) edges.set(edgeId(e), { ...e, id: edgeId(e) });
+    raws.set(vid, nodes);
 
     const out: RNode[] = [];
+    const broken = new Set<string>();
     for (const [nid, raw] of nodes) {
       const parsed = Node.safeParse(raw);
       if (!parsed.success) {
-        for (const iss of parsed.error.issues)
+        broken.add(nid);
+        if (!touched.has(nid)) continue; // inherited; reported where it was written
+        const fresh = !v.extends || !raws.get(v.extends)?.has(nid);
+        if (!fresh && raw.type === undefined) continue;
+        for (const iss of parsed.error.issues) {
+          const field = iss.path.join(".");
+          const key = `${nid}|${field}|${iss.message}`;
+          if (reported.has(key)) continue;
+          reported.add(key);
           issues.push({
             level: "error",
             file,
-            path: `variants.${vid}.nodes.${nid}${iss.path.length ? "." + iss.path.join(".") : ""}`,
-            message: iss.message,
+            path: `variants.${vid}.nodes.${nid}${field ? "." + field : ""}`,
+            message: `${hintFor(String(iss.path.at(-2) ?? iss.path.at(-1) ?? ""), iss.message)} (card '${nid}' is left off the canvas until fixed)`,
           });
+        }
         continue;
       }
       out.push({ ...parsed.data, hash: contentHash(parsed.data) } as RNode);
@@ -93,12 +114,14 @@ export function resolveVariants(view: View, file: string): { variants: RVariant[
     const ids = new Set(out.map((n) => n.id));
     const frames = new Set(view.frames.map((f) => f.id));
     for (const n of out)
-      if (n.frame && !frames.has(n.frame))
-        issues.push({ level: "warning", file, path: `variants.${vid}.nodes.${n.id}.frame`, message: `Unknown frame '${n.frame}'` });
+      if (n.frame && !frames.has(n.frame) && touched.has(n.id))
+        issues.push({ level: "warning", file, path: `variants.${vid}.nodes.${n.id}.frame`, message: `Unknown frame '${n.frame}' (frames: ${[...frames].join(", ") || "none"})` });
     const goodEdges = [...edges.values()].filter((e) => {
       const ok = ids.has(e.from) && ids.has(e.to);
-      if (!ok)
-        issues.push({ level: "warning", file, path: `variants.${vid}.edges.${e.id}`, message: `Edge points at a missing node (${e.from} → ${e.to})` });
+      // Removing a card quietly drops its edges; only warn about edges that point nowhere.
+      const ends = [e.from, e.to];
+      if (!ok && !ends.some((x) => removed.has(x) || broken.has(x)) && v.edges.some((x) => edgeId(x) === e.id))
+        issues.push({ level: "warning", file, path: `variants.${vid}.edges.${e.id}`, message: `Edge points at a card that does not exist (${e.from} → ${e.to})` });
       return ok;
     });
     const r: RVariant = {
@@ -118,6 +141,24 @@ export function resolveVariants(view: View, file: string): { variants: RVariant[
 
   for (const v of view.variants) build(v.id, []);
   return { variants: view.variants.map((v) => done.get(v.id)).filter((v): v is RVariant => !!v), issues };
+}
+
+/** Zod's messages don't say what shape was wanted; add it for the fields people get wrong. */
+const SHAPES: Record<string, string> = {
+  refs: "refs is a list of {label?, path?, lines?, url?}",
+  evidence: "evidence is a list of {label?, path?, lines?, url?, text?}",
+  inputs: "inputs is a list of strings or {name, type?, note?}",
+  outputs: "outputs is a list of strings or {name, type?, note?}",
+  options: "options is a list of {id, label, detail?}",
+  items: "items is a list of {text, why?}",
+  code: "code is a string, {code, lang?}, or {file, lines?, lang?}",
+  before: "before is a string, {code, lang?}, or {file, lines?, lang?}",
+  after: "after is a string, {code, lang?}, or {file, lines?, lang?}",
+  patch: "patch is a string, {code}, or {file}",
+};
+function hintFor(field: string, message: string) {
+  const shape = SHAPES[field];
+  return shape ? `${message}. ${shape}` : message;
 }
 
 export type ChangeState = "added" | "removed" | "changed" | "same";
@@ -151,7 +192,7 @@ export function compare(target: RVariant, against: RVariant | undefined): Compar
   const oldE = new Map(against.edges.map((e) => [e.id, e]));
   for (const e of target.edges) {
     const o = oldE.get(e.id);
-    put(edges, e.id, !o ? "added" : o.label !== e.label || o.style !== e.style ? "changed" : "same", false);
+    put(edges, e.id, !o ? "added" : o.label !== e.label || o.style !== e.style || o.tone !== e.tone ? "changed" : "same", false);
   }
   for (const e of against.edges) if (!edges.has(e.id)) put(edges, e.id, "removed", false);
   return { nodes, edges, counts };

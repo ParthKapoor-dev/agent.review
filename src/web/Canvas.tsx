@@ -15,6 +15,7 @@ import "@xyflow/react/dist/style.css";
 import type { ChangeState, Comparison } from "../core/resolve";
 import type { Comment, Mark, RNode, RVariant, RView } from "../core/types";
 import { CardNode, FrameNode, type CardData, type FrameData } from "./Card";
+import { RoutedEdge } from "./RoutedEdge";
 import { markFor } from "./util";
 
 export type CanvasHandle = { focusNode(id: string): void; fitFrame(id: string): void; fitAll(): void };
@@ -32,6 +33,7 @@ type Props = {
 };
 
 const nodeTypes = { card: CardNode, frame: FrameNode };
+const edgeTypes = { routed: RoutedEdge };
 
 type PaneSpec = {
   key: string;
@@ -178,7 +180,9 @@ function Pane(
       source: e.from,
       target: e.to,
       label: e.label,
-      className: `e-${pane.compared ? state : "same"} ${e.style === "dashed" ? "e-dashed" : ""}`,
+      type: "routed",
+      data: { points: view.layout.edges?.[e.id] },
+      className: `e-${pane.compared ? state : "same"} ${e.style === "dashed" ? "e-dashed" : ""} ${e.tone ? `tone-${e.tone}` : ""}`,
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
       selectable: false,
       focusable: false,
@@ -186,7 +190,7 @@ function Pane(
     const out = pane.variant.edges.map((e) => mk(e, pane.edgeStates.get(e.id) ?? "same"));
     if (pane.ghosts) for (const e of pane.ghosts.edges) if (pane.edgeStates.get(e.id) === "removed") out.push(mk(e, "removed"));
     return out;
-  }, [pane]);
+  }, [pane, view]);
 
   const controlled = p.viewport ? { viewport: p.viewport, onViewportChange: (v: Viewport) => p.onMove(null, v) } : {};
 
@@ -226,6 +230,7 @@ function Pane(
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
       onInit={onInit}
       onMove={p.viewport ? undefined : p.onMove}
       {...controlled}

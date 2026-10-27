@@ -117,7 +117,8 @@ kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4p
 .tb-title { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; }
 .tb-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
 .view-tabs { display: flex; gap: 2px; margin-left: 8px; overflow-x: auto; }
-.view-tabs button { background: none; border: 0; padding: 6px 10px; border-radius: 6px; color: var(--muted); white-space: nowrap; position: relative; }
+.view-tabs { min-width: 0; flex: 0 1 auto; }
+.view-tabs button { background: none; border: 0; padding: 6px 10px; border-radius: 6px; color: var(--muted); white-space: nowrap; position: relative; max-width: 220px; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; }
 .view-tabs button:hover { color: var(--text); background: var(--line-soft); }
 .view-tabs button.on { color: var(--text); background: var(--line-soft); font-weight: 550; }
 .view-tabs .dot { position: absolute; top: 5px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--changed); }
@@ -167,6 +168,10 @@ kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4p
 .pane-label { position: absolute; z-index: 5; top: 10px; left: 50%; transform: translateX(-50%); padding: 3px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: color-mix(in srgb, var(--k) 18%, var(--panel)); border: 1px solid color-mix(in srgb, var(--k) 60%, transparent); }
 .react-flow { --xy-background-color: var(--bg); --xy-background-pattern-dots-color: var(--bg-dots); --xy-edge-stroke: color-mix(in srgb, var(--muted) 70%, transparent); --xy-edge-label-background-color: var(--bg); --xy-edge-label-color: var(--muted); --xy-controls-button-background-color: var(--panel); --xy-controls-button-background-color-hover: var(--card-hi); --xy-controls-button-color: var(--text-2); --xy-controls-button-border-color: var(--line); --xy-minimap-background-color: var(--panel); }
 .react-flow__edge-text { font-size: 11px; font-family: var(--sans); }
+.react-flow__edge.tone-danger path.react-flow__edge-path { stroke: var(--scope); stroke-width: 2.5; }
+.react-flow__edge.tone-danger .react-flow__edge-text { fill: var(--scope); font-weight: 600; }
+.react-flow__edge.tone-safe path.react-flow__edge-path { stroke: var(--k-actual); stroke-width: 2; }
+.react-flow__edge.tone-muted path.react-flow__edge-path { opacity: 0.4; }
 .react-flow__edge.e-added path.react-flow__edge-path { stroke: var(--added); stroke-width: 2; }
 .react-flow__edge.e-changed path.react-flow__edge-path { stroke: var(--changed); stroke-width: 2; }
 .react-flow__edge.e-removed path.react-flow__edge-path { stroke: var(--removed); stroke-dasharray: 5 5; opacity: 0.7; }
@@ -405,3 +410,5 @@ button.primary.danger { background: var(--removed); }
 .vchip-verdict { font-size: 11px; font-weight: 700; margin-left: 2px; }
 .vchip-verdict.v-approve { color: var(--added); }
 .vchip-verdict.v-changes { color: var(--removed); }
+.lg-danger { color: var(--scope); border-color: var(--scope); }
+.lg-safe { color: var(--k-actual); }

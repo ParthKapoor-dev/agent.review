@@ -127,13 +127,17 @@ export const Edge = z.object({
   to: id,
   label: z.string().optional(),
   style: z.enum(["solid", "dashed"]).optional(),
+  tone: z
+    .enum(["danger", "safe", "muted"])
+    .optional()
+    .describe("danger: carries untrusted/unsafe data; safe: validated; muted: incidental"),
 });
 export type Edge = z.infer<typeof Edge>;
 
 export const VARIANT_KINDS = ["current", "proposed", "actual", "iteration", "alternative"] as const;
 
 /** A node inside a variant: a full node (new) or {id, ...fields to override} (existing). */
-const NodePatch = z.object({ id }).passthrough();
+export const NodePatch = z.object({ id }).passthrough().describe("Override of an inherited card: its id plus the fields that change");
 
 export const Variant = z.object({
   id,
@@ -190,3 +194,10 @@ export const Review = z.object({
   tour: z.array(TourStep).default([]),
 });
 export type Review = z.infer<typeof Review>;
+
+/** For the exported JSON Schema only: spells out the card types a variant's `nodes` may hold. */
+export const ViewForSchema = View.extend({
+  variants: z.array(
+    Variant.extend({ nodes: z.array(z.union([Node, NodePatch])).default([]) }),
+  ).min(1),
+});

@@ -4,7 +4,7 @@ import { parseArgs } from "node:util";
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { z } from "zod";
-import { Review, View } from "./core/schema";
+import { Review, ViewForSchema } from "./core/schema";
 import { discover, validateDir } from "./core/load";
 import { readFeedback, addComment, setCommentStatus, threads } from "./core/store";
 
@@ -180,7 +180,7 @@ async function main() {
     }
     case "schema": {
       const which = p[0] ?? "view";
-      const schema = which === "review" ? Review : View;
+      const schema = which === "review" ? Review : ViewForSchema;
       console.log(JSON.stringify(z.toJSONSchema(schema, { io: "input", unrepresentable: "any" }), null, 2));
       return;
     }

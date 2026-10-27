@@ -40,6 +40,8 @@ export function Help({ onClose }: { onClose(): void }) {
           <span className="lg lg-changed">Changed</span>
           <span className="lg lg-removed">Removed (ghost)</span>
           <span className="lg lg-scope">Not requested</span>
+          <span className="lg lg-danger">Edge: unsafe data</span>
+          <span className="lg lg-safe">Edge: validated</span>
         </div>
       </div>
     </div>
