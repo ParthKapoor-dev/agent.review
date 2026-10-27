@@ -40,6 +40,27 @@ Write for someone who has five minutes and did not watch you work.
 7. **Keep ids stable.** The same thing keeps the same `id` in every variant. That is how the app
    knows it changed instead of being removed and re-added.
 
+### Less text
+
+The canvas shows only each card's title; everything else opens in a side panel. The reviewer
+reads titles to find their way, so make them do the work and keep the rest short. `validate`
+warns past these limits:
+
+| text | limit | the rest goes in |
+|---|---|---|
+| card `title` | 70 chars | `summary`, then `body` |
+| card `summary` | 120 chars | `body` |
+| `change` | 80 chars | the diff shows it |
+| view `title` (a tab) | 28 chars | view `description` |
+| frame `title` | 22 chars | frame `description` |
+| review `summary` | 600 chars | cards |
+| each `board.waiting` item | 90 chars | a `question` card |
+| each tour stop `text` | 200 chars | the card it points at |
+
+Prefer structure to prose: a `question` card instead of a paragraph asking for a decision, a
+`test` with `expected`/`actual` instead of a description of a run, a `table` instead of numbers in
+a sentence.
+
 ## 3. Views: which maps to make
 
 Give each view a short `title` (2–4 words, it is a tab) and put the sentence in `description`.

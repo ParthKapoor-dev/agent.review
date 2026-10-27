@@ -1,7 +1,9 @@
 import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Check, Flag, Eye, RotateCcw, MessageSquare, X, CircleDashed, Ban } from "lucide-react";
 import type { ChangeState } from "../core/resolve";
 import type { RNode } from "../core/types";
+import { TypeIcon } from "./Icon";
 import { TYPE_LABEL } from "./util";
 
 export type CardData = {
@@ -16,69 +18,86 @@ export type CardData = {
 
 export type FrameData = { title: string; description?: string; index: number };
 
-const STATE_BADGE: Record<ChangeState, string | null> = { added: "New", changed: "Changed", removed: "Removed", same: null };
+const STATE_WORD: Record<ChangeState, string | null> = { added: "new", changed: "changed", removed: "removed", same: null };
 
-function footText(n: RNode): string | undefined {
-  const ref = n.refs?.[0];
-  if (ref) return ref.path ?? ref.label ?? ref.url;
-  if (n.type === "step" && n.code && typeof n.code === "object") return n.code.file ?? n.code.lang;
-  if (n.type === "step" && n.inputs?.length)
-    return `in: ${n.inputs.map((i) => (typeof i === "string" ? i : i.name)).join(", ")}`;
-  if (n.type === "diff") return n.path;
-  if (n.type === "test") {
-    const one = (v: unknown) => (v === undefined ? "" : typeof v === "string" ? v : JSON.stringify(v).replace(/"/g, ""));
-    if (n.actual !== undefined && n.result === "fail") return `got ${one(n.actual)}`;
-    return n.expected !== undefined ? `expects ${one(n.expected)}` : undefined;
+/** A short tag next to the icon: the step's kind, or nothing (the icon already says the type). */
+const tagOf = (n: RNode) => (n.type === "step" && n.kind ? n.kind : n.type === "diff" && n.path ? n.path.split("/").pop() : undefined);
+
+function Signals({ n }: { n: RNode }) {
+  switch (n.type) {
+    case "test":
+      return n.result === "pass" ? (
+        <span className="sig ok"><Check size={12} strokeWidth={2.5} /> pass</span>
+      ) : n.result === "fail" ? (
+        <span className="sig bad"><X size={12} strokeWidth={2.5} /> fail</span>
+      ) : (
+        <span className="sig dim"><CircleDashed size={12} /> {n.result === "skip" ? "skipped" : "not run"}</span>
+      );
+    case "claim":
+      return <span className={`sig conf-${n.confidence}`}><i className="dot" /> {n.confidence}</span>;
+    case "question":
+      return <span className="sig dim">{(n.options ?? []).map((_, i) => String.fromCharCode(65 + i)).join(" · ") || "open"}</span>;
+    case "unverified":
+      return <span className="sig warn">{n.items.length} unchecked</span>;
+    default:
+      return null;
   }
-  if (n.type === "question") return `${n.options?.length ?? 0} options`;
-  if (n.type === "unverified") return `${n.items.length} items`;
-  if (n.type === "claim") return n.evidence?.length ? `${n.evidence.length} evidence` : "no evidence";
 }
 
 export const CardNode = memo(function CardNode({ data, selected }: NodeProps) {
   const d = data as CardData;
   const n = d.n;
-  const badge = STATE_BADGE[d.state];
-  const markIcon = d.mark.state === "verified" ? "✓" : d.mark.state === "flagged" ? "⚑" : d.mark.state === "seen" ? "◦" : "";
+  const word = STATE_WORD[d.state];
   const notRequested = n.tags?.some((t) => /not.?requested|out.?of.?scope/i.test(t));
+  const tag = tagOf(n);
+  const mark = d.mark.state && !d.mark.stale ? d.mark.state : undefined;
+  const tip = [n.summary, n.change && `Change: ${n.change}`].filter(Boolean).join("\n\n");
   return (
     <div
+      title={tip || undefined}
       className={[
         "card",
         `t-${n.type}`,
         `st-${d.state}`,
         d.ghost ? "ghost" : "",
         selected ? "sel" : "",
-        d.mark.state && !d.mark.stale ? `mk-${d.mark.state}` : "",
+        mark ? `mk-${mark}` : "",
         n.type === "test" ? `res-${n.result}` : "",
+        notRequested ? "scope" : "",
       ].join(" ")}
     >
       <Handle type="target" position={d.vertical ? Position.Top : Position.Left} className="h" />
       <Handle type="source" position={d.vertical ? Position.Bottom : Position.Right} className="h" />
-      <div className="card-top">
-        <span className="type-badge">{(n.type === "step" && n.kind) || TYPE_LABEL[n.type]}</span>
-        {n.type === "test" && <span className={`result r-${n.result}`}>{n.result}</span>}
-        {n.type === "claim" && <span className={`conf c-${n.confidence}`}>{n.confidence}</span>}
-        {badge && <span className={`state-badge sb-${d.state}`}>{badge}</span>}
-        {notRequested && <span className="state-badge sb-scope">Not requested</span>}
+      <div className="card-head">
+        <TypeIcon type={n.type} />
+        <span className="card-tag">{tag ?? TYPE_LABEL[n.type]}</span>
         <span className="spacer" />
-        {markIcon && (
-          <span className={`mark-icon ${d.mark.stale ? "stale" : ""}`} title={d.mark.stale ? "Changed since you reviewed it" : d.mark.state}>
-            {d.mark.stale ? "↻" : markIcon}
-          </span>
-        )}
+        {word && <span className={`state s-${d.state}`}>{word}</span>}
       </div>
       <div className="card-title">{n.title}</div>
-      {n.summary && <div className="card-sum">{n.summary}</div>}
       {n.change && d.state !== "same" && <div className="card-change">{n.change}</div>}
-      {n.change && d.state === "same" && <div className="card-change quiet">{n.change}</div>}
       <div className="card-foot">
-        <span className="foot-text">{footText(n)}</span>
-        {d.total > 0 && (
-          <span className={`ccount ${d.open ? "open" : ""}`} title={`${d.open} open of ${d.total} threads`}>
-            💬 {d.open || d.total}
+        <Signals n={n} />
+        {notRequested && (
+          <span className="sig scope" title="Not requested">
+            <Ban size={12} /> not asked
           </span>
         )}
+        <span className="spacer" />
+        {d.total > 0 && (
+          <span className={`sig ${d.open ? "warn" : "dim"}`} title={`${d.open} open of ${d.total}`}>
+            <MessageSquare size={12} /> {d.open || d.total}
+          </span>
+        )}
+        {d.mark.stale ? (
+          <span className="mark stale" title="Changed since you reviewed it"><RotateCcw size={13} /></span>
+        ) : mark === "verified" ? (
+          <span className="mark verified" title="Verified"><Check size={14} strokeWidth={2.5} /></span>
+        ) : mark === "flagged" ? (
+          <span className="mark flagged" title="Flagged"><Flag size={13} /></span>
+        ) : mark === "seen" ? (
+          <span className="mark seen" title="Seen"><Eye size={13} /></span>
+        ) : null}
       </div>
     </div>
   );
@@ -87,12 +106,11 @@ export const CardNode = memo(function CardNode({ data, selected }: NodeProps) {
 export const FrameNode = memo(function FrameNode({ data }: NodeProps) {
   const d = data as FrameData;
   return (
-    <div className="frame">
+    <div className="frame" title={d.description}>
       <div className="frame-head">
-        <span className="frame-n">{d.index}</span>
+        <span className="frame-n">{String(d.index).padStart(2, "0")}</span>
         <span className="frame-title">{d.title}</span>
       </div>
-      {d.description && <div className="frame-desc">{d.description}</div>}
     </div>
   );
 });

@@ -69,6 +69,12 @@ export function loadReview(dir: string): RReview | { dir: string; issues: Issue[
   if (raw === undefined) return { dir, issues, failed: true };
   const parsed = Review.safeParse(raw);
   if (!parsed.success) return { dir, issues: zodIssues(file, parsed.error), failed: true };
+  const long = (path: string, text: string | undefined, max: number, hint: string) => {
+    if (text && text.length > max) issues.push({ level: "warning", file, path, message: `${text.length} chars; keep under ${max}. ${hint}` });
+  };
+  long("summary", parsed.data.summary, 600, "Two short paragraphs: what is wrong today, what changes. Detail belongs on cards.");
+  parsed.data.board?.waiting?.forEach((w, i) => long(`board.waiting.${i}`, w, 90, "One line per thing you need."));
+  parsed.data.tour.forEach((t, i) => long(`tour.${i}.text`, t.text, 200, "One or two sentences per stop."));
   const viewTitles: Record<string, string> = {};
   for (const v of parsed.data.views) {
     const vf = join(dir, "views", `${v}.json`);
@@ -76,8 +82,14 @@ export function loadReview(dir: string): RReview | { dir: string; issues: Issue[
       issues.push({ level: "error", file, path: "views", message: `views/${v}.json does not exist` });
       continue;
     }
-    const j = readJson(vf, issues) as { title?: string } | undefined;
+    const j = readJson(vf, issues) as { title?: string; frames?: { title?: string }[] } | undefined;
     viewTitles[v] = j?.title ?? v;
+    if (j?.title && j.title.length > 28)
+      issues.push({ level: "warning", file: vf, path: "title", message: `${j.title.length} chars; a view title is a tab, keep under 28. Put the sentence in description.` });
+    j?.frames?.forEach((f, i) => {
+      if (f.title && f.title.length > 22)
+        issues.push({ level: "warning", file: vf, path: `frames.${i}.title`, message: `${f.title.length} chars; frame titles are headings, keep under 22.` });
+    });
   }
   return { ...parsed.data, key: parsed.data.id, dir, viewTitles, issues };
 }

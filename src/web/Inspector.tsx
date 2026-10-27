@@ -5,6 +5,8 @@ import { api } from "./api";
 import { Threads } from "./Comments";
 import { CodeBlock, CodeDiff, CopyText, Markdown, Mermaid, PatchView, codeOf } from "./Rich";
 import { CONFIDENCE_LABEL, TYPE_LABEL, sameValue, show } from "./util";
+import { TypeIcon } from "./Icon";
+import { Check, Eye, Flag, X, RotateCcw } from "lucide-react";
 
 type Props = {
   reviewKey: string;
@@ -49,11 +51,18 @@ export function Inspector(p: Props) {
   return (
     <aside className="inspector">
       <div className="in-head">
-        <span className="type-badge">{(n.type === "step" && n.kind) || TYPE_LABEL[n.type]}</span>
-        {p.state !== "same" && p.against && <span className={`state-badge sb-${p.state}`}>{p.state === "added" ? "New" : p.state === "changed" ? "Changed" : "Removed"} vs {p.against.label}</span>}
+        <span className="in-type">
+          <TypeIcon type={n.type} size={15} />
+          {(n.type === "step" && n.kind) || TYPE_LABEL[n.type]}
+        </span>
+        {p.state !== "same" && p.against && (
+          <span className={`state s-${p.state}`}>
+            {p.state === "added" ? "new" : p.state === "changed" ? "changed" : "removed"} vs {p.against.label}
+          </span>
+        )}
         <span className="spacer" />
         <button className="icon-btn" onClick={p.onClose} title="Close (esc)">
-          ✕
+          <X size={16} />
         </button>
       </div>
       <h2 className="in-title">{n.title}</h2>
@@ -70,12 +79,22 @@ export function Inspector(p: Props) {
 
       {!removed && (
         <div className="mark-row">
-          {(["seen", "verified", "flagged"] as const).map((s) => (
-            <button key={s} className={`mark-btn mb-${s} ${p.mark.state === s && !p.mark.stale ? "on" : ""}`} onClick={() => p.onMark(p.mark.state === s && !p.mark.stale ? null : s)}>
-              {s === "verified" ? "✓ Verified" : s === "flagged" ? "⚑ Flag" : "◦ Seen"}
-            </button>
-          ))}
-          {p.mark.stale && <span className="stale-note">↻ Changed since you marked it {p.mark.state}{p.mark.variant ? ` on ${variantLabels[p.mark.variant] ?? p.mark.variant}` : ""}</span>}
+          <div className="seg marks">
+            {(["seen", "verified", "flagged"] as const).map((s) => {
+              const I = s === "verified" ? Check : s === "flagged" ? Flag : Eye;
+              const on = p.mark.state === s && !p.mark.stale;
+              return (
+                <button key={s} className={`mb-${s} ${on ? "on" : ""}`} onClick={() => p.onMark(on ? null : s)} title={s === "verified" ? "Verified (r)" : s === "flagged" ? "Flag (x)" : "Seen"}>
+                  <I size={14} strokeWidth={s === "verified" ? 2.5 : 2} /> {s === "verified" ? "Verified" : s === "flagged" ? "Flag" : "Seen"}
+                </button>
+              );
+            })}
+          </div>
+          {p.mark.stale && (
+            <span className="stale-note">
+              <RotateCcw size={12} /> changed since you marked it
+            </span>
+          )}
         </div>
       )}
 

@@ -1,5 +1,7 @@
 import { api, useData, useLiveReload } from "./api";
 import { navigate } from "./nav";
+import { ThemeToggle } from "./Chrome";
+import { ArrowRight, MessageSquare, TriangleAlert } from "lucide-react";
 
 const ago = (ms: number) => {
   const s = Math.round((Date.now() - ms) / 1000);
@@ -16,19 +18,22 @@ export function Home() {
   return (
     <div className="home">
       <header className="home-head">
-        <div className="brand">
-          <span className="brand-mark" />
-          agent.review
+        <span className="logo-mark" style={{ width: 22, height: 22, borderRadius: 6 }} />
+        <h1>
+          Reviews <em>· agent.review</em>
+        </h1>
+        <div className="tb-right">
+          <ThemeToggle />
         </div>
-        <div className="muted small">{data?.roots.join(" · ")}</div>
       </header>
+      <div className="home-sub">{data?.roots.join(" · ")}</div>
       {error && <div className="banner error">{error}</div>}
       {data && reviews.length === 0 && (
         <div className="empty">
-          <h2>No reviews here yet</h2>
+          <h2>Nothing to review yet</h2>
           <p>
-            An agent creates one by writing a <code>review.json</code> and <code>views/*.json</code>. Start one with{" "}
-            <code>agent-review init</code>, or point the app at a folder that has some: <code>agent-review serve ~/work</code>.
+            An agent starts one with <code>agent-review init</code> or <code>agent-review from-git</code>. Or point the app at a folder
+            that has some: <code>agent-review serve ~/work</code>.
           </p>
         </div>
       )}
@@ -37,22 +42,34 @@ export function Home() {
           <li key={r.key}>
             <a
               href={`/r/${encodeURIComponent(r.key)}`}
+              title={r.dir}
               onClick={(e) => {
                 e.preventDefault();
                 navigate(`/r/${encodeURIComponent(r.key)}`);
               }}
             >
-              <div className="rl-top">
-                <span className={`status-pill s-${r.status}`}>{r.status}</span>
-                <span className="rl-title">{r.title}</span>
-              </div>
-              <div className="rl-meta">
-                <span>{r.views.map((v) => v.title).join(" · ") || "no views"}</span>
-                {r.openComments > 0 && <span className="pill warn">{r.openComments} open</span>}
-                {r.errors > 0 && <span className="pill bad">{r.errors} errors</span>}
-                <span className="muted">{ago(r.updatedAt)}</span>
-              </div>
-              <div className="rl-path muted">{r.dir}</div>
+              <span className="rl-title">{r.title}</span>
+              <span className="rl-meta">
+                <span className={`status s-${r.status}`}>
+                  <i />
+                  {r.status.replace("-", " ")}
+                </span>
+                <span>{r.views.length} view{r.views.length === 1 ? "" : "s"}</span>
+                <span>{ago(r.updatedAt)}</span>
+              </span>
+              <span className="rl-side">
+                {r.openComments > 0 && (
+                  <span className="tb-chip warn" title="Open comments">
+                    <MessageSquare size={13} /> {r.openComments}
+                  </span>
+                )}
+                {r.errors > 0 && (
+                  <span className="tb-chip bad" title="Errors in the agent's files">
+                    <TriangleAlert size={13} /> {r.errors}
+                  </span>
+                )}
+                <ArrowRight size={16} className="muted" />
+              </span>
             </a>
           </li>
         ))}

@@ -111,6 +111,7 @@ export function resolveVariants(view: View, file: string): { variants: RVariant[
       }
       out.push({ ...parsed.data, hash: contentHash(parsed.data) } as RNode);
     }
+    for (const n of out) if (touched.has(n.id)) issues.push(...tooLong(file, `variants.${vid}.nodes.${n.id}`, n));
     const ids = new Set(out.map((n) => n.id));
     const frames = new Set(view.frames.map((f) => f.id));
     for (const n of out)
@@ -141,6 +142,20 @@ export function resolveVariants(view: View, file: string): { variants: RVariant[
 
   for (const v of view.variants) build(v.id, []);
   return { variants: view.variants.map((v) => done.get(v.id)).filter((v): v is RVariant => !!v), issues };
+}
+
+/** Reviewers read titles, not paragraphs. Long text is a warning, with where the rest should go. */
+export const LIMITS = { title: 70, summary: 120, change: 80 } as const;
+function tooLong(file: string, path: string, n: { title: string; summary?: string; change?: string }): Issue[] {
+  const out: Issue[] = [];
+  const say = (field: keyof typeof LIMITS, text: string | undefined, where: string) => {
+    if (text && text.length > LIMITS[field])
+      out.push({ level: "warning", file, path: `${path}.${field}`, message: `${text.length} chars; keep under ${LIMITS[field]}. ${where}` });
+  };
+  say("title", n.title, "Say what it does in a short sentence; move detail to summary or body.");
+  say("summary", n.summary, "Move the rest into body.");
+  say("change", n.change, "One short clause; the diff shows the rest.");
+  return out;
 }
 
 /** Zod's messages don't say what shape was wanted; add it for the fields people get wrong. */

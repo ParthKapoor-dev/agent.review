@@ -9,6 +9,12 @@ import { Brief } from "./Brief";
 import { Search } from "./Search";
 import { Help } from "./Help";
 import { KIND_LABEL, markFor, nextInDirection, type Dir } from "./util";
+import { Markdown } from "./Rich";
+import { ThemeToggle, Progress } from "./Chrome";
+import {
+  Check, X, ChevronDown, ChevronLeft, ChevronRight, Columns2, Keyboard, Layers, MessageSquare, PanelLeft,
+  Search as SearchIcon, TriangleAlert,
+} from "lucide-react";
 
 type Q = { view?: string; v?: string; vs?: string; mode?: "overlay" | "side"; node?: string };
 
@@ -258,7 +264,7 @@ export function ReviewPage({ reviewKey }: { reviewKey: string }) {
     <div className="rp">
       <header className="topbar">
         <a
-          className="brand small-brand"
+          className="logo"
           href="/"
           onClick={(e) => {
             e.preventDefault();
@@ -266,19 +272,22 @@ export function ReviewPage({ reviewKey }: { reviewKey: string }) {
           }}
           title="All reviews"
         >
-          <span className="brand-mark" />
+          <span className="logo-mark" />
         </a>
         <div className="tb-title">
-          <span className={`status-pill s-${review.status}`}>{review.status}</span>
-          <span className="tb-name" title={review.dir}>{review.title}</span>
+          <h1 title={review.dir}>{review.title}</h1>
+          <span className={`status s-${review.status}`} title="Status">
+            <i />
+            {review.status.replace("-", " ")}
+          </span>
         </div>
-        <nav className="view-tabs">
+        <nav className="tabs">
           {review.views.map((v, i) => (
             <button
               key={v}
               className={v === viewId ? "on" : ""}
               onClick={() => setQ({ view: v, v: undefined, vs: undefined, node: undefined }, true)}
-              title={`${review.viewTitles[v] ?? v}\nView ${i + 1} (, and . to switch)`}
+              title={`${review.viewTitles[v] ?? v} · view ${i + 1} (, and . to switch)`}
             >
               {review.viewTitles[v] ?? v}
               {comments.some((c) => c.view === v && c.status === "open" && !c.parent && c.author === "reviewer") && <i className="dot" />}
@@ -286,73 +295,86 @@ export function ReviewPage({ reviewKey }: { reviewKey: string }) {
           ))}
         </nav>
         <div className="tb-right">
-          {view && target && (
-            <span className="progress" title="Cards you marked verified in this variant">
-              <b>{verified}</b>/{target.nodes.length} verified
+          {view && target && <Progress done={verified} total={target.nodes.length} />}
+          {openCount > 0 && (
+            <span className="tb-chip warn" title={`${openCount} open comments`}>
+              <MessageSquare size={14} /> {openCount}
             </span>
           )}
-          {openCount > 0 && <span className="pill warn">{openCount} open</span>}
-          {issues.some((i) => i.level === "error") && <span className="pill bad">{issues.filter((i) => i.level === "error").length} errors</span>}
-          <button className="icon-btn" onClick={() => setSearchOpen(true)} title="Search (/)">⌕</button>
-          <button className="icon-btn" onClick={() => setHelpOpen(true)} title="Shortcuts (?)">?</button>
+          {issues.some((i) => i.level === "error") && (
+            <span className="tb-chip bad" title="Errors in the agent's files (see overview)">
+              <TriangleAlert size={14} /> {issues.filter((i) => i.level === "error").length}
+            </span>
+          )}
+          <button className="icon-btn" onClick={() => setSearchOpen(true)} title="Search (/)">
+            <SearchIcon size={16} />
+          </button>
+          <ThemeToggle />
+          <button className="icon-btn" onClick={() => setHelpOpen(true)} title="Keyboard (?)">
+            <Keyboard size={16} />
+          </button>
         </div>
       </header>
 
       {view && target && (
-        <div className="variant-bar">
-          {!briefOpen && (
-            <button className="brief-toggle" onClick={() => setBriefOpen(true)} title="Show the brief (b)">
-              ☰ Brief
-            </button>
-          )}
-          <div className="vb-chain">
-            {view.variants.map((v, i) => (
-              <button
-                key={v.id}
-                className={`vchip k-${v.kind} ${v.id === target.id ? "on" : ""} ${v.id === against?.id ? "vs" : ""}`}
-                onClick={(e) => (e.shiftKey ? setQ({ vs: v.id === target.id ? "none" : v.id }) : setQ({ v: v.id, vs: undefined }))}
-                title={`${KIND_LABEL[v.kind]}${v.extends ? ` · builds on ${v.extends}` : ""}\nClick: show · Shift-click: compare against`}
-              >
-                {i > 0 && <span className="vchip-arrow">→</span>}
-                <span className="vchip-dot" />
-                {v.label}
-                {(() => {
-                  const vd = comments.filter((c) => c.kind === "verdict" && c.view === view.id && c.variant === v.id).sort((a, b) => a.ts.localeCompare(b.ts)).at(-1);
-                  return vd ? <span className={`vchip-verdict v-${vd.choice}`} title={vd.choice === "approve" ? "Approved" : "Changes requested"}>{vd.choice === "approve" ? "✓" : "✗"}</span> : null;
-                })()}
-              </button>
-            ))}
-          </div>
-          <div className="vb-compare">
-            <label>
-              compared with
-              <select value={against?.id ?? "none"} onChange={(e) => setQ({ vs: e.target.value })}>
-                <option value="none">nothing</option>
-                {view.variants
-                  .filter((v) => v.id !== target.id)
-                  .map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.label}
-                    </option>
-                  ))}
-              </select>
-            </label>
+        <div className="timeline-bar">
+          <button className={`icon-btn ${briefOpen ? "on" : ""}`} onClick={() => setBriefOpen((o) => !o)} title="Overview (b)">
+            <PanelLeft size={16} />
+          </button>
+          <ol className="timeline">
+            {view.variants.map((v, i) => {
+              const vd = comments
+                .filter((c) => c.kind === "verdict" && c.view === view.id && c.variant === v.id)
+                .sort((a, b) => a.ts.localeCompare(b.ts))
+                .at(-1);
+              return (
+                <li key={v.id} className={`tl k-${v.kind} ${v.id === target.id ? "on" : ""} ${v.id === against?.id ? "vs" : ""}`}>
+                  {i > 0 && <span className="tl-line" />}
+                  <button
+                    onClick={(e) => (e.shiftKey ? setQ({ vs: v.id === target.id ? "none" : v.id }) : setQ({ v: v.id, vs: undefined }))}
+                    title={`${KIND_LABEL[v.kind]}${v.summary ? `\n${v.summary}` : ""}\n\nClick to show · Shift-click to compare against`}
+                  >
+                    <span className="tl-dot">
+                      {vd?.choice === "approve" ? <Check size={10} strokeWidth={3} /> : vd?.choice === "changes" ? <X size={10} strokeWidth={3} /> : null}
+                    </span>
+                    <span className="tl-label">{v.label}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+          <div className="cmp">
+            {view.variants.length > 1 && (
+              <label className="cmp-select" title="Compare with (c)">
+                <span>vs</span>
+                <select value={against?.id ?? "none"} onChange={(e) => setQ({ vs: e.target.value })}>
+                  <option value="none">nothing</option>
+                  {view.variants
+                    .filter((v) => v.id !== target.id)
+                    .map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.label}
+                      </option>
+                    ))}
+                </select>
+                <ChevronDown size={14} />
+              </label>
+            )}
             {against && (
               <div className="seg">
-                <button className={mode === "overlay" ? "on" : ""} onClick={() => setQ({ mode: "overlay" })} title="Differences on one map">
-                  Overlay
+                <button className={mode === "overlay" ? "on" : ""} onClick={() => setQ({ mode: "overlay" })} title="Overlay: differences on one map">
+                  <Layers size={15} />
                 </button>
-                <button className={mode === "side" ? "on" : ""} onClick={() => setQ({ mode: "side" })} title="Two maps, side by side (s)">
-                  Side by side
+                <button className={mode === "side" ? "on" : ""} onClick={() => setQ({ mode: "side" })} title="Side by side (s)">
+                  <Columns2 size={15} />
                 </button>
               </div>
             )}
             {cmp && against && (
               <span className="counts">
-                {cmp.counts.added > 0 && <span className="c-added">+{cmp.counts.added} new</span>}
-                {cmp.counts.changed > 0 && <span className="c-changed">~{cmp.counts.changed} changed</span>}
-                {cmp.counts.removed > 0 && <span className="c-removed">−{cmp.counts.removed} removed</span>}
-                {cmp.counts.added + cmp.counts.changed + cmp.counts.removed === 0 && <span className="muted">no differences</span>}
+                <span className="c-added" title="new">+{cmp.counts.added}</span>
+                <span className="c-changed" title="changed">~{cmp.counts.changed}</span>
+                <span className="c-removed" title="removed">−{cmp.counts.removed}</span>
               </span>
             )}
           </div>
@@ -413,35 +435,26 @@ export function ReviewPage({ reviewKey }: { reviewKey: string }) {
         )}
       </div>
 
-      <footer className="bottombar">
-        {tour !== null && tourSteps[tour] ? (
-          <div className="tour">
-            <span className="tour-n">
-              Tour {tour + 1}/{tourSteps.length}
-            </span>
-            <b>{tourSteps[tour]!.title}</b>
-            <span className="tour-text">{tourSteps[tour]!.text.replace(/[`*]/g, "")}</span>
-            <button onClick={() => goTour(tour - 1)} disabled={tour === 0}>
-              ← [
-            </button>
-            <button onClick={() => goTour(tour + 1)}>{tour + 1 < tourSteps.length ? "next ]" : "finish"}</button>
-            <button onClick={() => setTour(null)}>✕</button>
+      {tour !== null && tourSteps[tour] && (
+        <div className="tour">
+          <span className="tour-n">
+            {tour + 1}<span>/{tourSteps.length}</span>
+          </span>
+          <div className="tour-body">
+            {tourSteps[tour]!.title && <b>{tourSteps[tour]!.title}</b>}
+            <Markdown text={tourSteps[tour]!.text} className="inline" />
           </div>
-        ) : (
-          <div className="hints">
-            <span><kbd>←↑↓→</kbd> move</span>
-            <span><kbd>1-9</kbd> frame</span>
-            <span><kbd>⏎</kbd> open</span>
-            <span><kbd>v</kbd> variant</span>
-            <span><kbd>c</kbd> compare</span>
-            <span><kbd>r</kbd> verified</span>
-            <span><kbd>m</kbd> comment</span>
-            {tourSteps.length > 0 && <span><kbd>t</kbd> tour</span>}
-            <span><kbd>/</kbd> search</span>
-            <span><kbd>?</kbd> all keys</span>
-          </div>
-        )}
-      </footer>
+          <button className="icon-btn" onClick={() => goTour(tour - 1)} disabled={tour === 0} title="Back ([)">
+            <ChevronLeft size={16} />
+          </button>
+          <button className="icon-btn strong" onClick={() => goTour(tour + 1)} title="Next (])">
+            {tour + 1 < tourSteps.length ? <ChevronRight size={16} /> : <Check size={16} />}
+          </button>
+          <button className="icon-btn" onClick={() => setTour(null)} title="End tour (esc)">
+            <X size={15} />
+          </button>
+        </div>
+      )}
 
       {searchOpen && view && (
         <Search
