@@ -57,6 +57,8 @@ export type Comment = {
   /** answer: the chosen option id. verdict: "approve" | "changes". */
   choice?: string;
   status: "open" | "resolved";
+  /** When an agent hook last handed this to an agent session. */
+  deliveredAt?: string;
 };
 
 export type MarkState = "seen" | "verified" | "flagged";

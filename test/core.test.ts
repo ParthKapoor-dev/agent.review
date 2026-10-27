@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { View } from "../src/core/schema";
 import { resolveVariants, compare } from "../src/core/resolve";
 import { loadView, validateDir } from "../src/core/load";
-import { addComment, readFeedback, setCommentStatus, setMark } from "../src/core/store";
+import { addComment, readFeedback, setCommentStatus, setMark, undelivered, markDelivered } from "../src/core/store";
 
 const view = (variants: unknown[]) =>
   View.parse({ id: "v", title: "V", frames: [{ id: "f", title: "F" }], variants });
@@ -148,5 +148,15 @@ describe("files", () => {
     expect(fb.comments.find((x) => x.id === c.id)!.status).toBe("resolved");
     expect(fb.comments.filter((x) => x.parent === c.id)).toHaveLength(1);
     expect(fb.marks["v/s"]!.state).toBe("verified");
+  });
+
+  test("undelivered: reviewer input on open threads, handed over once", () => {
+    const open = addComment(dir, { author: "reviewer", view: "v", node: "s", kind: "blocking", text: "fix" });
+    const v = addComment(dir, { author: "reviewer", view: "v", variant: "a", kind: "verdict", choice: "changes", text: "no" });
+    const fresh = undelivered(readFeedback(dir)).map((c) => c.id);
+    expect(fresh).toContain(open.id);
+    expect(fresh).toContain(v.id);
+    markDelivered(dir, fresh);
+    expect(undelivered(readFeedback(dir))).toEqual([]);
   });
 });

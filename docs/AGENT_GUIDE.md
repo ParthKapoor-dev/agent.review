@@ -213,6 +213,13 @@ A `tour` is 3–7 stops that walk through the story. Each stop names a card and 
    `agent-review reply <folder> <id> "what you did" --resolve` for each.
    Answer questions in a reply without resolving if you need the reviewer to confirm.
 
+### Getting feedback without polling
+
+If the reviewer's agent setup runs `agent-review hook` (print the config with `agent-review hooks`),
+new comments, answers and verdicts arrive by themselves: as extra context after your next tool
+call, or when you try to end your turn. Each item arrives once. Treat it like a message from the
+reviewer: act on it, then reply.
+
 ## 7. Checklist before you hand over
 
 - [ ] `validate` passes with no errors

@@ -412,3 +412,4 @@ button.primary.danger { background: var(--removed); }
 .vchip-verdict.v-changes { color: var(--removed); }
 .lg-danger { color: var(--scope); border-color: var(--scope); }
 .lg-safe { color: var(--k-actual); }
+.seen { font-size: 11px; color: var(--k-actual); }

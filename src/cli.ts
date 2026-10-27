@@ -25,6 +25,8 @@ const HELP = `agent-review — review an AI agent's work on a canvas
         --head <rev>       diff to (default: the working tree, including new files)
         --out <dir>        review folder (default <repo>/.agent-review)
         --variant <id> --label "…" --kind actual|iteration|proposed|… --extends <id>
+  hook <event>             For agent hooks: print reviewer feedback the agent hasn't seen (once)
+  hooks                    Print the Claude Code hooks config that runs \`hook\`
   schema [review|view]     Print the JSON Schema for review.json or views/<id>.json
   guide                    Print the authoring guide for agents (docs/AGENT_GUIDE.md)
 `;
@@ -176,6 +178,18 @@ async function main() {
       });
       console.log(`${r.files} files → ${r.viewFile} (variant ${r.variant}${r.extends ? `, extends ${r.extends}` : ""})`);
       console.log(`Next: retitle the cards to say what each change does, then: agent-review validate ${out}`);
+      return;
+    }
+    case "hook": {
+      const { runHook } = await import("./hook");
+      await runHook(p[0] ?? "PostToolUse");
+      return;
+    }
+    case "hooks": {
+      const { HOOKS_SNIPPET } = await import("./hook");
+      const bin = `bun ${join(import.meta.dir, "cli.ts")}`;
+      console.log(`Add to .claude/settings.json (project) or ~/.claude/settings.json. Codex and Cursor accept the same events.\n`);
+      console.log(JSON.stringify(HOOKS_SNIPPET(bin), null, 2));
       return;
     }
     case "schema": {

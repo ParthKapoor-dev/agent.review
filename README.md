@@ -38,4 +38,11 @@ agent-review comments <dir>      what the reviewer said (--json for tools)
 agent-review reply <dir> <id> "…" [--resolve]
 ```
 
+## Feedback reaches the agent by itself
+
+`agent-review hooks` prints a Claude Code hooks config (Codex and Cursor use the same events).
+With it, the agent gets new comments, answers and verdicts as context after its next tool call,
+and is held from ending its turn while there is unread feedback. Each item is delivered once, and
+the app marks it "seen by agent". Without hooks, the agent runs `agent-review comments`.
+
 Design and research: `docs/DESIGN.md`, `docs/research/`.

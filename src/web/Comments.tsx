@@ -73,6 +73,7 @@ function Thread(p: Parameters<typeof Threads>[0] & { root: Comment; replies: Com
         >
           {r.status === "open" ? "Resolve" : "Reopen"}
         </button>
+        {r.deliveredAt && <span className="seen" title={`Handed to the agent ${when(r.deliveredAt)}`}>seen by agent</span>}
         <span className="muted small mono" title="Thread id, for the agent">{r.id}</span>
       </div>
       {replying && <Composer {...p} parent={r.id} onDone={() => setReplying(false)} />}

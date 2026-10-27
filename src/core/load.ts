@@ -3,7 +3,6 @@ import { readdirSync, statSync, existsSync, readFileSync } from "node:fs";
 import { join, resolve, dirname, isAbsolute, relative } from "node:path";
 import { Review, View } from "./schema";
 import { resolveVariants } from "./resolve";
-import { layoutView } from "./layout";
 import type { Issue, RReview, RView, ResolvedCode } from "./types";
 
 const SKIP = new Set(["node_modules", ".git", "dist", "build", ".next", ".cache", "target", ".venv", "venv"]);
@@ -129,6 +128,7 @@ export async function loadView(dir: string, viewId: string): Promise<{ view?: RV
   if (!parsed.success) return { issues: [...issues, ...zodIssues(file, parsed.error)] };
   const { variants, issues: vi } = resolveVariants(parsed.data, file);
   issues.push(...vi);
+  const { layoutView } = await import("./layout"); // ELK is heavy; hooks and the CLI rarely need it
   const layout = await layoutView(parsed.data, variants);
   const { variants: _drop, ...rest } = parsed.data;
   return { view: { ...rest, variants, layout }, issues };

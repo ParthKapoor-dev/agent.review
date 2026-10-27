@@ -8,7 +8,8 @@ import type { Comment, Feedback, Mark } from "./types";
 
 type Event =
   | { op: "add"; comment: Omit<Comment, "status"> }
-  | { op: "status"; id: string; status: Comment["status"]; ts: string };
+  | { op: "status"; id: string; status: Comment["status"]; ts: string }
+  | { op: "delivered"; ids: string[]; ts: string };
 
 const dirOf = (reviewDir: string) => join(reviewDir, "feedback");
 
@@ -24,6 +25,11 @@ export function readFeedback(reviewDir: string): Feedback {
         else if (ev.op === "status") {
           const c = comments.get(ev.id);
           if (c) c.status = ev.status;
+        } else if (ev.op === "delivered") {
+          for (const id of ev.ids) {
+            const c = comments.get(id);
+            if (c) c.deliveredAt = ev.ts;
+          }
         }
       } catch {}
     }
@@ -69,4 +75,18 @@ export function setMark(reviewDir: string, key: string, mark: Mark | null) {
 export function threads(comments: Comment[]) {
   const roots = comments.filter((c) => !c.parent);
   return roots.map((r) => ({ ...r, replies: comments.filter((c) => c.parent === r.id) }));
+}
+
+/** Reviewer input an agent has not been handed yet: open threads, replies, answers, verdicts. */
+export function undelivered(fb: Feedback): Comment[] {
+  const byId = new Map(fb.comments.map((c) => [c.id, c]));
+  return fb.comments.filter((c) => {
+    if (c.author !== "reviewer" || c.deliveredAt) return false;
+    const root = c.parent ? byId.get(c.parent) : c;
+    return root?.status === "open";
+  });
+}
+
+export function markDelivered(reviewDir: string, ids: string[]) {
+  if (ids.length) append(reviewDir, { op: "delivered", ids, ts: new Date().toISOString() });
 }
