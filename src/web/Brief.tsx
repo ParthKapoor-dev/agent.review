@@ -62,7 +62,7 @@ export function Brief(p: Props) {
           </button>
         )}
         {p.review.links.map((l) => (
-          <a key={l.url} className="pill-btn ghost" href={l.url} target="_blank" rel="noreferrer">
+          <a key={l.url} className="pill-btn ghost" href={l.url} target="_blank" rel="noreferrer" title={l.label}>
             <Link2 size={12} /> {l.label}
           </a>
         ))}

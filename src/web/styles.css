@@ -106,7 +106,7 @@ button.primary, .btn { display: inline-flex; align-items: center; gap: 6px; back
 .btn.ok { background: var(--added); color: #fff; }
 .btn.danger { background: var(--removed); color: #fff; }
 .pill-btn { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--ink); background: var(--ink); color: var(--on-ink); font-size: 12.5px; font-weight: 600; text-decoration: none; }
-.pill-btn.ghost { background: none; color: var(--text-2); border-color: var(--line); font-weight: 500; }
+.pill-btn.ghost { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; background: none; color: var(--text-2); border-color: var(--line); font-weight: 500; }
 .pill-btn.ghost:hover { color: var(--ink); border-color: var(--muted); }
 .seg { display: inline-flex; background: var(--card-2); border: 1px solid var(--line); border-radius: 9px; padding: 2px; gap: 2px; }
 .seg button { display: inline-flex; align-items: center; gap: 5px; background: none; border: 0; border-radius: 7px; padding: 3px 8px; color: var(--muted); font-size: 12.5px; }
@@ -290,7 +290,7 @@ kbd { display: inline-block; min-width: 20px; text-align: center; border: 1px so
 
 /* semantic zoom: far away, titles only and bigger */
 .z-far .card-head, .z-far .card-change, .z-far .card-foot { visibility: hidden; }
-.z-far .card-title { position: absolute; inset: 14px; margin: 0; font-size: 30px; line-height: 34px; -webkit-line-clamp: 4; }
+.z-far .card-title { position: absolute; inset: 12px 14px; margin: 0; font-size: 24px; line-height: 28px; -webkit-line-clamp: 2; }
 .z-far .frame-title { font-size: 52px; }
 .z-mid .card-change { visibility: hidden; }
 
@@ -422,7 +422,7 @@ td { font-variant-numeric: tabular-nums; }
 .md > :first-child { margin-top: 0; }
 .md > :last-child { margin-bottom: 0; }
 .md p { margin: 6px 0; }
-.md code { background: var(--card-2); border: 1px solid var(--line-2); padding: 0 4px; border-radius: 4px; font-size: 0.88em; }
+.md code { overflow-wrap: anywhere; background: var(--card-2); border: 1px solid var(--line-2); padding: 0 4px; border-radius: 4px; font-size: 0.88em; }
 .md pre { background: var(--card); border: 1px solid var(--line); padding: 10px 12px; border-radius: 8px; overflow-x: auto; }
 .md pre code { background: none; border: 0; padding: 0; }
 .md strong { color: var(--ink); font-weight: 600; }

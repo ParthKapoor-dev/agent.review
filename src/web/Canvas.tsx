@@ -81,7 +81,20 @@ export const Canvas = forwardRef<CanvasHandle, Props>(function Canvas(p, ref) {
     },
     fitFrame(id) {
       const b = p.view.layout.frames[id];
-      if (b) void primary()?.fitBounds({ x: b.x, y: b.y, width: b.w, height: b.h }, { padding: 0.08, duration: 350 });
+      const inst = primary();
+      const el = document.querySelector(".canvas .pane") as HTMLElement | null;
+      if (!b || !inst || !el) return;
+      const W = el.clientWidth;
+      const H = el.clientHeight;
+      const fit = Math.min((W * 0.92) / b.w, (H * 0.9) / b.h, 1);
+      if (fit >= 0.62) return void inst.fitBounds({ x: b.x, y: b.y, width: b.w, height: b.h }, { padding: 0.06, duration: 350 });
+      // Too wide to read whole: stay legible and start at the frame's leading edge.
+      const z = Math.min(0.85, (H * 0.9) / b.h);
+      const vertical = p.view.direction === "down";
+      void inst.setViewport(
+        vertical ? { zoom: z, x: (W - b.w * z) / 2 - b.x * z, y: 24 - b.y * z } : { zoom: z, x: 24 - b.x * z, y: (H - b.h * z) / 2 - b.y * z },
+        { duration: 350 },
+      );
     },
     fitAll() {
       void primary()?.fitView({ padding: 0.08, duration: 350 });
