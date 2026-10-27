@@ -57,6 +57,10 @@ warns past these limits:
 | each `board.waiting` item | 90 chars | a `question` card |
 | each tour stop `text` | 200 chars | the card it points at |
 
+Ids, case names and file paths don't belong in titles: put a saved test case name in `tags` or
+`refs`, a file in `refs`. The reason for a change goes in `body`; it opens right under the
+`change` line in the side panel.
+
 Prefer structure to prose: a `question` card instead of a paragraph asking for a decision, a
 `test` with `expected`/`actual` instead of a description of a run, a `table` instead of numbers in
 a sentence.
