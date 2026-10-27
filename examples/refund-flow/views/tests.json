@@ -1,0 +1,96 @@
+{
+  "id": "tests",
+  "title": "Test cases",
+  "description": "Each case uses order 1042: total $80.00, already refunded $20.00.",
+  "frames": [
+    { "id": "happy", "title": "Normal use" },
+    { "id": "attack", "title": "Attacks" },
+    { "id": "edge", "title": "Edge cases" }
+  ],
+  "defaultVariant": "actual",
+  "defaultCompare": "proposed",
+  "variants": [
+    {
+      "id": "proposed",
+      "label": "Planned",
+      "kind": "proposed",
+      "summary": "The cases the proposal promised. Nothing run yet.",
+      "nodes": [
+        {
+          "id": "t-full", "type": "test", "frame": "happy",
+          "title": "Refunding the rest of the order refunds $60.00",
+          "inputs": { "orderId": "1042", "amount": 60 },
+          "expected": { "status": 200, "refunded": 60 },
+          "result": "pending",
+          "command": "curl -X POST $DEV/refunds -d '{\"orderId\":\"1042\",\"amount\":60}'"
+        },
+        {
+          "id": "t-partial", "type": "test", "frame": "happy",
+          "title": "Asking for more than is left refunds only what is left",
+          "inputs": { "orderId": "1042", "amount": 75 },
+          "expected": { "status": 200, "refunded": 60 },
+          "result": "pending"
+        },
+        {
+          "id": "t-sqli", "type": "test", "frame": "attack",
+          "title": "An id of `1 OR 1=1` finds no order",
+          "inputs": { "orderId": "1 OR 1=1", "amount": 10 },
+          "expected": { "status": 404, "code": "ORDER_NOT_FOUND" },
+          "result": "pending"
+        },
+        {
+          "id": "t-other-user", "type": "test", "frame": "attack",
+          "title": "Someone else's order cannot be refunded",
+          "inputs": { "orderId": "2001", "amount": 10, "as": "user-b" },
+          "expected": { "status": 404, "code": "ORDER_NOT_FOUND" },
+          "result": "pending"
+        },
+        {
+          "id": "t-zero", "type": "test", "frame": "edge",
+          "title": "A fully refunded order is rejected",
+          "inputs": { "orderId": "1043", "amount": 5 },
+          "expected": { "status": 409, "code": "NOTHING_TO_REFUND" },
+          "result": "pending"
+        }
+      ]
+    },
+    {
+      "id": "actual",
+      "label": "Run on dev",
+      "kind": "actual",
+      "extends": "proposed",
+      "summary": "Results from dev, 2026-10-27.",
+      "nodes": [
+        { "id": "t-full", "result": "pass", "actual": { "status": 200, "refunded": 60 }, "evidence": [{ "label": "dev run", "text": "refundId rf_a81, 312 ms" }] },
+        {
+          "id": "t-partial", "result": "fail",
+          "actual": { "status": 409, "code": "NOTHING_TO_REFUND" },
+          "change": "Fails: the build rejects instead of capping.",
+          "evidence": [{ "label": "dev run", "text": "409 NOTHING_TO_REFUND after 41 ms" }]
+        },
+        { "id": "t-sqli", "result": "pass", "actual": { "status": 404, "code": "ORDER_NOT_FOUND" } },
+        { "id": "t-other-user", "result": "pass", "actual": { "status": 404, "code": "ORDER_NOT_FOUND" } },
+        { "id": "t-zero", "result": "pass", "actual": { "status": 409, "code": "NOTHING_TO_REFUND" } },
+        {
+          "id": "t-cents", "type": "test", "frame": "edge",
+          "title": "Amounts with more than two decimals are rounded to cents",
+          "inputs": { "orderId": "1042", "amount": 10.005 },
+          "expected": { "status": 200, "refunded": 10.01 },
+          "actual": { "status": 200, "refunded": 10.01 },
+          "result": "pass",
+          "change": "Added during the build."
+        }
+      ]
+    },
+    {
+      "id": "iteration-2",
+      "label": "Iteration 2",
+      "kind": "iteration",
+      "extends": "actual",
+      "summary": "After the capping fix.",
+      "nodes": [
+        { "id": "t-partial", "result": "pass", "actual": { "status": 200, "refunded": 60 }, "change": "Passes after the fix.", "evidence": [{ "label": "dev run", "text": "refundId rf_b02, 298 ms" }] }
+      ]
+    }
+  ]
+}

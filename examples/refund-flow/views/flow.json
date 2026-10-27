@@ -1,0 +1,151 @@
+{
+  "id": "flow",
+  "title": "Refund chain",
+  "description": "The steps of `refunds.create`, from the browser request to the response.",
+  "frames": [
+    { "id": "request", "title": "Request", "description": "What the page sends" },
+    { "id": "checks", "title": "Checks" },
+    { "id": "data", "title": "Data" },
+    { "id": "money", "title": "Money" },
+    { "id": "response", "title": "Response" }
+  ],
+  "defaultVariant": "proposed",
+  "defaultCompare": "current",
+  "variants": [
+    {
+      "id": "current",
+      "label": "Current",
+      "kind": "current",
+      "summary": "What runs in production today.",
+      "nodes": [
+        {
+          "id": "page", "type": "step", "frame": "request", "kind": "Page action",
+          "title": "Refund button sends the order id and an amount",
+          "summary": "The amount comes from an editable field on the page.",
+          "code": { "lang": "json", "code": "{\n  \"orderId\": \"1042\",\n  \"amount\": 60.00\n}" },
+          "refs": [{ "label": "Page", "path": "pages/orders/refund-dialog" }]
+        },
+        {
+          "id": "auth", "type": "step", "frame": "checks", "kind": "JS step",
+          "title": "Checks the user is signed in",
+          "summary": "Rejects with 401 when there is no session.",
+          "code": { "lang": "javascript", "code": "if (!session.userId) {\n  return error(401, 'NOT_SIGNED_IN');\n}" },
+          "inputs": ["session"], "outputs": ["userId"]
+        },
+        {
+          "id": "load-order", "type": "step", "frame": "data", "kind": "SQL step",
+          "title": "Loads the order by pasting the id into SQL",
+          "summary": "Any text in orderId becomes part of the query.",
+          "code": { "lang": "sql", "code": "SELECT id, user_id, total, refunded\nFROM orders\nWHERE id = ${input.orderId}" },
+          "inputs": [{ "name": "orderId", "type": "string" }], "outputs": [{ "name": "order", "type": "row" }]
+        },
+        {
+          "id": "refund", "type": "step", "frame": "money", "kind": "JS step",
+          "title": "Refunds the amount the browser sent",
+          "summary": "No comparison with the order total.",
+          "code": { "lang": "javascript", "code": "const r = await payments.refund({\n  orderId: order.id,\n  amount: input.amount,\n});\nreturn { refundId: r.id };" }
+        },
+        {
+          "id": "respond", "type": "step", "frame": "response", "kind": "Response",
+          "title": "Returns the refund id",
+          "code": { "lang": "json", "code": "{ \"refundId\": \"rf_9a1\" }" }
+        }
+      ],
+      "edges": [
+        { "from": "page", "to": "auth", "label": "POST" },
+        { "from": "auth", "to": "load-order" },
+        { "from": "load-order", "to": "refund", "label": "order" },
+        { "from": "refund", "to": "respond" }
+      ]
+    },
+    {
+      "id": "proposed",
+      "label": "Proposed",
+      "kind": "proposed",
+      "extends": "current",
+      "summary": "Bind the order id, check ownership, and compute the amount on the server.",
+      "nodes": [
+        {
+          "id": "page", "title": "Refund button sends the order id and an amount",
+          "summary": "Unchanged. The amount is still sent, but only as a requested ceiling."
+        },
+        {
+          "id": "load-order",
+          "title": "Loads the order with a bound parameter, only if it is yours",
+          "summary": "The id is a parameter, and the order must belong to the user.",
+          "change": "Bound parameter instead of pasted text; adds an ownership check.",
+          "code": { "lang": "sql", "code": "SELECT id, user_id, total, refunded\nFROM orders\nWHERE id = :orderId\n  AND user_id = :userId" },
+          "inputs": [{ "name": "orderId", "type": "string" }, { "name": "userId", "type": "string" }]
+        },
+        {
+          "id": "calc-amount", "type": "step", "frame": "money", "kind": "JS step",
+          "title": "Works out how much can still be refunded",
+          "summary": "total − refunded, capped by what was asked for.",
+          "change": "New step.",
+          "code": { "lang": "javascript", "code": "if (!order) return error(404, 'ORDER_NOT_FOUND');\nconst left = order.total - order.refunded;\nconst amount = Math.min(input.amount, left);\nif (amount <= 0) return error(409, 'NOTHING_TO_REFUND');\nreturn { amount };" },
+          "outputs": [{ "name": "amount", "type": "number" }]
+        },
+        {
+          "id": "refund",
+          "title": "Refunds the amount the server worked out",
+          "summary": "Uses calc-amount's result, never the browser's number.",
+          "change": "Uses the computed amount.",
+          "code": { "lang": "javascript", "code": "const r = await payments.refund({\n  orderId: order.id,\n  amount: amount,\n});\nreturn { refundId: r.id };" }
+        }
+      ],
+      "edges": [
+        { "from": "load-order", "to": "calc-amount", "label": "order" },
+        { "from": "calc-amount", "to": "refund", "label": "amount" }
+      ],
+      "remove": ["load-order->refund"]
+    },
+    {
+      "id": "actual",
+      "label": "Actual (built)",
+      "kind": "actual",
+      "extends": "proposed",
+      "summary": "What was built on dev. Two differences from the proposal.",
+      "nodes": [
+        {
+          "id": "calc-amount",
+          "summary": "total − refunded, capped by the request; rounds to cents.",
+          "change": "Rounds to cents (not in the proposal), but compares before rounding.",
+          "code": { "lang": "javascript", "code": "if (!order) return error(404, 'ORDER_NOT_FOUND');\nconst left = order.total - order.refunded;\nif (input.amount > left) return error(409, 'NOTHING_TO_REFUND');\nconst amount = Math.round(input.amount * 100) / 100;\nreturn { amount };" }
+        },
+        {
+          "id": "audit", "type": "step", "frame": "money", "kind": "SQL step",
+          "title": "Writes an audit row for every refund",
+          "summary": "Not requested. Added during the build.",
+          "change": "New step, not in the proposal.",
+          "tags": ["not requested"],
+          "code": { "lang": "sql", "code": "INSERT INTO refund_audit (order_id, user_id, amount, at)\nVALUES (:orderId, :userId, :amount, now())" }
+        }
+      ],
+      "edges": [
+        { "from": "refund", "to": "audit" },
+        { "from": "audit", "to": "respond" }
+      ],
+      "remove": ["refund->respond"]
+    },
+    {
+      "id": "iteration-2",
+      "label": "Iteration 2",
+      "kind": "iteration",
+      "extends": "actual",
+      "summary": "Fixes partial refunds and drops the audit step, as asked in review.",
+      "respondsTo": [],
+      "nodes": [
+        {
+          "id": "calc-amount",
+          "summary": "total − refunded, capped by the request.",
+          "change": "Back to capping instead of rejecting, so partial refunds work.",
+          "code": { "lang": "javascript", "code": "if (!order) return error(404, 'ORDER_NOT_FOUND');\nconst left = order.total - order.refunded;\nconst amount = Math.min(input.amount, left);\nif (amount <= 0) return error(409, 'NOTHING_TO_REFUND');\nreturn { amount: Math.round(amount * 100) / 100 };" }
+        }
+      ],
+      "edges": [
+        { "from": "refund", "to": "respond" }
+      ],
+      "remove": ["audit", "refund->audit", "audit->respond"]
+    }
+  ]
+}

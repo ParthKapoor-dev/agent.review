@@ -1,0 +1,71 @@
+{
+  "id": "checks",
+  "title": "Decisions and trust",
+  "description": "What the agent needs from you, what it is sure of, and what it did not check.",
+  "frames": [
+    { "id": "decide", "title": "Needs your decision" },
+    { "id": "sure", "title": "What the agent checked" },
+    { "id": "unsure", "title": "Not checked" }
+  ],
+  "variants": [
+    {
+      "id": "now",
+      "label": "Now",
+      "kind": "current",
+      "nodes": [
+        {
+          "id": "q-partial", "type": "question", "frame": "decide",
+          "title": "Should a refund larger than what is left be capped or rejected?",
+          "body": "The proposal caps it (refund $60 when $75 is asked). The build rejects it. Support says customers often type the original price.",
+          "options": [
+            { "id": "cap", "label": "Cap it to what is left", "detail": "Matches the proposal. Customers get the most they can." },
+            { "id": "reject", "label": "Reject with 409", "detail": "Forces staff to type the right amount." }
+          ],
+          "recommended": "cap"
+        },
+        {
+          "id": "q-audit", "type": "question", "frame": "decide",
+          "title": "Keep the audit step that was added without being asked?",
+          "options": [
+            { "id": "drop", "label": "Drop it from this change", "detail": "Raise a separate ticket if wanted." },
+            { "id": "keep", "label": "Keep it", "detail": "Needs a new table on every environment." }
+          ],
+          "recommended": "drop"
+        },
+        {
+          "id": "c-bound", "type": "claim", "frame": "sure",
+          "title": "No other step in the chain pastes input into SQL",
+          "confidence": "checked",
+          "body": "Searched every SQL step in `refunds.*` for `${`.",
+          "evidence": [{ "label": "search output", "path": "assets/sql-search.txt" }]
+        },
+        {
+          "id": "c-callers", "type": "claim", "frame": "sure",
+          "title": "Only the refund dialog calls this chain",
+          "confidence": "read",
+          "body": "Read the page list; did not check scheduled jobs."
+        },
+        {
+          "id": "u-list", "type": "unverified", "frame": "unsure",
+          "title": "Things the agent did not check",
+          "items": [
+            { "text": "Refunds in other currencies", "why": "No non-USD orders on dev." },
+            { "text": "Two refunds of the same order at the same moment", "why": "Needs two sessions; not run." },
+            { "text": "Scheduled jobs that call refunds.create", "why": "No access to the job list." }
+          ]
+        },
+        {
+          "id": "seq", "type": "diagram", "frame": "sure",
+          "title": "Who talks to whom after the change",
+          "mermaid": "sequenceDiagram\n  participant P as Refund dialog\n  participant C as refunds.create\n  participant DB as orders\n  participant Pay as Payments\n  P->>C: orderId, amount (ceiling)\n  C->>DB: SELECT … WHERE id = :orderId AND user_id = :userId\n  DB-->>C: total, refunded\n  C->>C: amount = min(asked, total − refunded)\n  C->>Pay: refund(amount)\n  Pay-->>C: refundId\n  C-->>P: refundId"
+        },
+        {
+          "id": "rows", "type": "table", "frame": "sure",
+          "title": "Order 1042 before and after the test run",
+          "columns": ["When", "total", "refunded", "left"],
+          "rows": [["Before", 80, 20, 60], ["After t-full", 80, 80, 0]]
+        }
+      ]
+    }
+  ]
+}

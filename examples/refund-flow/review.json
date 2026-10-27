@@ -1,0 +1,23 @@
+{
+  "agentReview": 1,
+  "id": "refund-flow",
+  "title": "Refunds: stop trusting the amount the browser sends",
+  "status": "in-progress",
+  "summary": "Today the **refunds.create** chain refunds whatever amount the browser sends, and builds its order lookup by pasting the order id into SQL. The change works out the refundable amount on the server and binds the order id as a parameter.\n\nThe running example on every view: **order 1042**, total **$80.00**, already refunded **$20.00**.",
+  "board": {
+    "done": ["Proposal written", "Changes built on dev", "Tests run on dev"],
+    "waiting": ["Should partial refunds be allowed? (Checks view)", "Audit row was added without being asked; keep or drop?"],
+    "next": ["Publish to stage after approval"]
+  },
+  "links": [
+    { "label": "Ticket", "url": "https://example.com/tickets/REF-112" }
+  ],
+  "views": ["flow", "tests", "checks"],
+  "tour": [
+    { "view": "flow", "variant": "current", "node": "load-order", "title": "The problem", "text": "Today the order id from the browser is pasted straight into the SQL text. Anyone can send `1 OR 1=1`." },
+    { "view": "flow", "variant": "current", "node": "refund", "title": "The second problem", "text": "The refund uses the amount the browser sent. Nothing compares it with the order." },
+    { "view": "flow", "variant": "proposed", "node": "calc-amount", "title": "The proposal", "text": "A new step works out the refundable amount from the order itself, and the refund uses that." },
+    { "view": "flow", "variant": "actual", "node": "audit", "title": "Scope check", "text": "The build added an audit step nobody asked for. Decide whether it stays." },
+    { "view": "tests", "variant": "actual", "node": "t-partial", "title": "One failing test", "text": "Partial refunds fail on the actual build; iteration 2 fixes it." }
+  ]
+}
