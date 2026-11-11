@@ -40,7 +40,9 @@
     "validate": "bun src/cli.ts validate",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "schema": "bun src/cli.ts schema view > schema/view.schema.json && bun src/cli.ts schema review > schema/review.schema.json"
+    "schema": "bun src/cli.ts schema view > schema/view.schema.json && bun src/cli.ts schema review > schema/review.schema.json",
+    "start": "bun src/cli.ts serve",
+    "app": "portless agent-review bun src/cli.ts serve"
   },
   "license": "MIT"
 }

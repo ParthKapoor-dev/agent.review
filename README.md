@@ -13,6 +13,16 @@ bun run dev                      # serves ./examples on http://localhost:4477
 bun src/cli.ts serve ~/work      # every review folder under ~/work
 ```
 
+With [portless](https://portless.sh/) installed, run it as a named app instead of a port:
+
+```
+AGENT_REVIEW_ROOTS=~/work:~/other bun run app   # → https://agent-review.localhost
+```
+
+`serve` honours `PORT`, `HOST` and `PORTLESS_URL`, and reads its roots from `AGENT_REVIEW_ROOTS`
+(`:`-separated) when none are given. It watches each review folder, and looks for new reviews
+every 15 s and whenever the home page loads, so pointing it at a large workspace is cheap.
+
 ## How it works
 
 ```

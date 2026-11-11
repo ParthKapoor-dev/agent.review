@@ -10,8 +10,9 @@ import { readFeedback, addComment, setCommentStatus, threads } from "./core/stor
 
 const HELP = `agent-review — review an AI agent's work on a canvas
 
-  serve [roots...]         Open the app for every review under the roots (default: .)
-        --port 4477 --host 127.0.0.1
+  serve [roots...]         Open the app for every review under the roots
+                           (default: $AGENT_REVIEW_ROOTS, ":"-separated, else .)
+        --port 4477 --host 127.0.0.1   ($PORT / $HOST win, so portless just works)
   validate [dir]           Check a review folder (or every review under dir)
   comments [dir]           What the reviewer said: open threads and answers
         --all              include resolved threads
@@ -54,7 +55,7 @@ async function main() {
     allowPositionals: true,
     options: {
       port: { type: "string", default: process.env.PORT ?? "4477" },
-      host: { type: "string", default: "127.0.0.1" },
+      host: { type: "string", default: process.env.HOST ?? "127.0.0.1" },
       all: { type: "boolean", default: false },
       json: { type: "boolean", default: false },
       resolve: { type: "boolean", default: false },
@@ -73,7 +74,12 @@ async function main() {
   switch (cmd) {
     case "serve": {
       const { serve } = await import("./server");
-      await serve({ roots: p.length ? p : ["."], port: Number(o.port), host: o.host! });
+      // Roots: arguments, else AGENT_REVIEW_ROOTS (":"-separated, ~ allowed), else the current folder.
+      const fromEnv = (process.env.AGENT_REVIEW_ROOTS ?? "")
+        .split(":")
+        .filter(Boolean)
+        .map((r) => r.replace(/^~(?=\/|$)/, process.env.HOME ?? "~"));
+      await serve({ roots: p.length ? p : fromEnv.length ? fromEnv : ["."], port: Number(o.port), host: o.host! });
       return;
     }
     case "validate": {

@@ -1,5 +1,5 @@
 // `agent-review serve`: one local app for every review folder under the given roots.
-import { watch, statSync, existsSync } from "node:fs";
+import { watch, statSync, existsSync, type FSWatcher } from "node:fs";
 import { resolve, relative } from "node:path";
 import index from "./web/index.html";
 import { discover, loadReview, loadView, safePath } from "./core/load";
@@ -56,7 +56,10 @@ export async function serve(opts: { roots: string[]; port: number; host: string 
     routes: {
       "/": index,
       "/r/*": index,
-      "/api/reviews": () => json({ roots, reviews: summaries() }),
+      "/api/reviews": () => {
+        rescanAndSync(); // the home page should show a review the moment it exists
+        return json({ roots, reviews: summaries() });
+      },
       "/api/reviews/:key": (req) => {
         const dir = dirFor(req.params.key);
         if (!dir) return notFound("Review");
@@ -135,31 +138,46 @@ export async function serve(opts: { roots: string[]; port: number; host: string 
 
   const broadcast = (key?: string) => server.publish("changes", JSON.stringify({ type: "changed", key }));
 
-  // Live reload: any change under a root rescans and tells every open page which review changed.
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const pending = new Set<string>();
-  for (const root of roots) {
-    try {
-      watch(root, { recursive: true }, (_ev, file) => {
-        if (!file || /(^|\/)(node_modules|\.git)(\/|$)/.test(String(file))) return;
-        pending.add(resolve(root, String(file)));
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-          const changed = [...pending];
-          pending.clear();
-          rescan();
-          const keys = new Set<string>();
-          for (const [k, d] of registry) if (changed.some((f) => f.startsWith(d + "/") || f === d)) keys.add(k);
-          if (keys.size === 0) broadcast();
-          for (const k of keys) broadcast(k);
-        }, 150);
-      });
-    } catch (e) {
-      console.warn(`Not watching ${root}: ${(e as Error).message}`);
+  // Live reload. Watch each review folder (small) rather than the roots (a workspace can be huge
+  // and full of agent transcripts); find new or deleted reviews with a periodic rescan.
+  const watchers = new Map<string, FSWatcher>();
+  const timers = new Map<string, ReturnType<typeof setTimeout>>();
+  const keyOf = (dir: string) => [...registry].find(([, d]) => d === dir)?.[0];
+  const syncWatchers = () => {
+    const dirs = new Set(registry.values());
+    for (const [d, w] of watchers) if (!dirs.has(d)) (w.close(), watchers.delete(d));
+    for (const d of dirs) {
+      if (watchers.has(d)) continue;
+      try {
+        const w = watch(d, { recursive: true }, (_ev, file) => {
+          if (file && /(^|\/)feedback\//.test(String(file))) return; // our own writes; we broadcast those already
+          clearTimeout(timers.get(d));
+          timers.set(
+            d,
+            setTimeout(() => {
+              if (String(file).endsWith("review.json")) rescanAndSync();
+              const k = keyOf(d);
+              if (k) broadcast(k);
+            }, 150),
+          );
+        });
+        w.on("error", () => (w.close(), watchers.delete(d)));
+        watchers.set(d, w);
+      } catch (e) {
+        console.warn(`Not watching ${d}: ${(e as Error).message}`);
+      }
     }
-  }
+  };
+  const rescanAndSync = () => {
+    const before = [...registry.keys()].join("|");
+    rescan();
+    syncWatchers();
+    if ([...registry.keys()].join("|") !== before) broadcast();
+  };
+  syncWatchers();
+  setInterval(rescanAndSync, 15_000);
 
-  console.log(`agent.review  →  http://${opts.host === "0.0.0.0" ? "localhost" : opts.host}:${server.port}`);
+  console.log(`agent.review  →  ${process.env.PORTLESS_URL ?? `http://${opts.host === "0.0.0.0" ? "localhost" : opts.host}:${server.port}`}`);
   console.log(`  ${registry.size} review${registry.size === 1 ? "" : "s"} under ${roots.join(", ")}`);
   return server;
 }

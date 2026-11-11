@@ -6,7 +6,7 @@ const dir = readdirSync(base).find((d) => d.startsWith("chromium-"))!;
 const exe = `${base}/${dir}/chrome-linux64/chrome`;
 const [url, out, w = "1500", h = "900", actions = "[]"] = process.argv.slice(2);
 const browser = await chromium.launch({ executablePath: exe });
-const page = await browser.newPage({ viewport: { width: +w, height: +h }, colorScheme: (process.env.SCHEME as "dark") ?? "dark" });
+const page = await browser.newPage({ ignoreHTTPSErrors: true, viewport: { width: +w, height: +h }, colorScheme: (process.env.SCHEME as "dark") ?? "dark" });
 const errors: string[] = [];
 page.on("pageerror", (e) => errors.push(e.message));
 page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
