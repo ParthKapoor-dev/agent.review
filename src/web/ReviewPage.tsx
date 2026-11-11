@@ -10,6 +10,7 @@ import { Search } from "./Search";
 import { Help } from "./Help";
 import { KIND_LABEL, markFor, nextInDirection, type Dir } from "./util";
 import { Markdown } from "./Rich";
+import { Orb, moodFor } from "./Orb";
 import { ThemeToggle, Progress } from "./Chrome";
 import {
   Check, X, ChevronDown, ChevronLeft, ChevronRight, Columns2, Keyboard, Layers, MessageSquare, PanelLeft,
@@ -252,7 +253,13 @@ export function ReviewPage({ reviewKey }: { reviewKey: string }) {
         <IssueList issues={rv.data.issues} />
       </div>
     );
-  if (!review) return <div className="loading">Loading…</div>;
+  if (!review)
+    return (
+      <div className="loading">
+        <Orb size={64} mood="thinking" label="Loading" />
+        Loading…
+      </div>
+    );
 
   const openCount = comments.filter((c) => c.status === "open" && c.author === "reviewer" && !c.parent).length;
   const viewComments = comments.filter((c) => c.view === viewId);
@@ -272,12 +279,11 @@ export function ReviewPage({ reviewKey }: { reviewKey: string }) {
           }}
           title="All reviews"
         >
-          <span className="logo-mark" />
+          <Orb size={26} mood={moodFor(review.status).mood} label={`${moodFor(review.status).label} · All reviews`} />
         </a>
         <div className="tb-title">
           <h1 title={review.dir}>{review.title}</h1>
-          <span className={`status s-${review.status}`} title="Status">
-            <i />
+          <span className={`status s-${review.status}`} title={moodFor(review.status).label}>
             {review.status.replace("-", " ")}
           </span>
         </div>

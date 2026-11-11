@@ -1,6 +1,7 @@
 import { api, useData, useLiveReload } from "./api";
 import { navigate } from "./nav";
 import { ThemeToggle } from "./Chrome";
+import { Orb } from "./Orb";
 import { ArrowRight, MessageSquare, TriangleAlert } from "lucide-react";
 
 const ago = (ms: number) => {
@@ -18,7 +19,7 @@ export function Home() {
   return (
     <div className="home">
       <header className="home-head">
-        <span className="logo-mark" style={{ width: 22, height: 22, borderRadius: 6 }} />
+        <Orb size={52} mood="idle" label="agent.review" />
         <h1>
           Reviews <em>· agent.review</em>
         </h1>
