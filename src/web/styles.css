@@ -139,7 +139,7 @@ kbd { display: inline-block; min-width: 20px; text-align: center; border: 1px so
 .home-head h1 { font-family: var(--serif); font-weight: 400; font-size: 46px; line-height: 1; letter-spacing: -0.01em; margin: 0; color: var(--ink); }
 .home-head h1 em { color: var(--muted); }
 .home-head .tb-right { margin-left: auto; }
-.home-sub { color: var(--muted); font-size: 12px; margin: 0 0 36px; font-family: var(--mono); }
+
 .review-list { list-style: none; padding: 0; margin: 0; display: grid; }
 .review-list a { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; padding: 20px 4px; border-bottom: 1px solid var(--line); color: var(--text); text-decoration: none; transition: padding 0.15s; }
 .review-list li:first-child a { border-top: 1px solid var(--line); }
@@ -483,3 +483,22 @@ td { font-variant-numeric: tabular-nums; }
   .progress, .tl-label { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* workspaces (git repositories) */
+.ws-switch { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 28px; }
+.ws-switch button { display: inline-flex; align-items: center; gap: 8px; background: none; border: 1px solid var(--line); border-radius: 999px; padding: 5px 14px; color: var(--text-2); font-size: 13px; }
+.ws-switch button span { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.ws-switch button:hover { border-color: var(--muted); color: var(--ink); }
+.ws-switch button.on { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+.ws-switch button.on span { color: var(--on-ink); opacity: 0.7; }
+.ws { margin-top: 36px; }
+.ws-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px 12px; margin-bottom: 10px; }
+.ws-head h2 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 30px; line-height: 1; color: var(--ink); }
+.ws-icon { color: var(--muted); align-self: center; }
+.ws-branch { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 11.5px; color: var(--k-iteration); }
+.ws-path { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-left: auto; }
+.ws-empty { color: var(--muted); font-size: 13.5px; border-top: 1px solid var(--line); padding-top: 14px; margin: 0; }
+.rl-dir { font-family: var(--mono); font-size: 11px; }
+.crumb { font-size: 13px; color: var(--muted); text-decoration: none; white-space: nowrap; }
+.crumb:hover { color: var(--ink); }
+.crumb span { margin-left: 8px; color: var(--line); }

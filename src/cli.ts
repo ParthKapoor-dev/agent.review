@@ -6,11 +6,17 @@ import { join, resolve } from "node:path";
 import { z } from "zod";
 import { Review, ViewForSchema } from "./core/schema";
 import { discover, validateDir } from "./core/load";
+import { addWorkspace, readRegistry, registryFile, removeWorkspace, resolveWorkspaces } from "./core/workspaces";
 import { readFeedback, addComment, setCommentStatus, threads } from "./core/store";
 
 const HELP = `agent-review — review an AI agent's work on a canvas
 
-  serve [roots...]         Open the app for every review under the roots
+  up [roots...]            Start the app: https://agent-review.localhost under portless
+                           (when installed), else like serve. --no-portless to skip it.
+  workspace add [path] [--title name]   Register a git repo; the app shows its reviews
+  workspace rm <path|name>              Unregister it (files untouched)
+  workspace ls                          List workspaces and their review counts
+  serve [roots...]         Open the app for every review in the workspaces, plus any roots
                            (default: $AGENT_REVIEW_ROOTS, ":"-separated, else .)
         --port 4477 --host 127.0.0.1   ($PORT / $HOST win, so portless just works)
   validate [dir]           Check a review folder (or every review under dir)
@@ -71,15 +77,56 @@ async function main() {
     },
   });
 
+  const runServe = async () => {
+    const { serve } = await import("./server");
+    // Extra roots: arguments, else AGENT_REVIEW_ROOTS (":"-separated, ~ allowed). Registered
+    // workspaces are always included; with neither, serve the repo you are in.
+    const fromEnv = (process.env.AGENT_REVIEW_ROOTS ?? "")
+      .split(":")
+      .filter(Boolean)
+      .map((r) => r.replace(/^~(?=\/|$)/, process.env.HOME ?? "~"));
+    const roots = p.length ? p : fromEnv;
+    await serve({ roots: roots.length || readRegistry().length ? roots : ["."], port: Number(o.port), host: o.host! });
+  };
+
   switch (cmd) {
+    case "up": {
+      // The app as a named local site: under portless when it's installed, else on a port.
+      const self = [process.execPath, join(import.meta.dir, "cli.ts"), "serve", ...p];
+      const portless = Bun.which("portless");
+      if (portless && !process.env.PORTLESS_URL && !process.argv.includes("--no-portless")) {
+        const child = Bun.spawn([portless, "agent-review", ...self], { stdio: ["inherit", "inherit", "inherit"] });
+        process.on("SIGINT", () => child.kill("SIGINT"));
+        process.exit(await child.exited);
+      }
+      await runServe();
+      return;
+    }
     case "serve": {
-      const { serve } = await import("./server");
-      // Roots: arguments, else AGENT_REVIEW_ROOTS (":"-separated, ~ allowed), else the current folder.
-      const fromEnv = (process.env.AGENT_REVIEW_ROOTS ?? "")
-        .split(":")
-        .filter(Boolean)
-        .map((r) => r.replace(/^~(?=\/|$)/, process.env.HOME ?? "~"));
-      await serve({ roots: p.length ? p : fromEnv.length ? fromEnv : ["."], port: Number(o.port), host: o.host! });
+      await runServe();
+      return;
+    }
+    case "workspace":
+    case "workspaces": {
+      const [sub = "ls", arg] = p;
+      if (sub === "add") {
+        const { entry, added } = addWorkspace(arg ?? ".", o.title);
+        console.log(`${added ? "Added" : "Already registered"}: ${entry.name ?? entry.path.split("/").pop()}  ${entry.path}`);
+        return;
+      }
+      if (sub === "rm" || sub === "remove") {
+        if (!arg) return fail("usage: agent-review workspace rm <path|name>");
+        const gone = removeWorkspace(arg);
+        if (!gone) return fail(`No workspace ${arg}`);
+        console.log(`Removed ${gone.path} (its files are untouched)`);
+        return;
+      }
+      const ws = resolveWorkspaces([]);
+      if (!ws.length) return console.log(`No workspaces. Add one: agent-review workspace add <repo>\n(registry: ${registryFile()})`);
+      for (const w of ws) {
+        const n = discover([w.path]).length;
+        console.log(`${w.name.padEnd(22)} ${String(n).padStart(3)} review${n === 1 ? " " : "s"}  ${w.path}${w.branch ? `  (${w.branch})` : ""}`);
+      }
       return;
     }
     case "validate": {
@@ -161,7 +208,9 @@ async function main() {
           2,
         ) + "\n",
       );
-      console.log(`Created ${dir}. Run: agent-review serve ${p[0] ?? "."}`);
+      const { entry, added } = addWorkspace(dir);
+      console.log(`Created ${dir}.`);
+      if (added) console.log(`Registered workspace ${entry.path}; the app shows it on its next scan.`);
       return;
     }
     case "from-git": {
@@ -183,6 +232,7 @@ async function main() {
         extends: o.extends,
       });
       console.log(`${r.files} files → ${r.viewFile} (variant ${r.variant}${r.extends ? `, extends ${r.extends}` : ""})`);
+      if (addWorkspace(repo).added) console.log(`Registered workspace ${repo}.`);
       console.log(`Next: retitle the cards to say what each change does, then: agent-review validate ${out}`);
       return;
     }

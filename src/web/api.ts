@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Comment, Feedback, Issue, Mark, RReview, RView, ReviewSummary } from "../core/types";
+import type { Comment, Feedback, Issue, Mark, RReview, RView, ReviewSummary, WorkspaceInfo } from "../core/types";
 
 async function get<T>(url: string): Promise<T> {
   const r = await fetch(url);
@@ -13,7 +13,7 @@ async function post<T>(url: string, body: unknown): Promise<T> {
 }
 
 export const api = {
-  reviews: () => get<{ roots: string[]; reviews: ReviewSummary[] }>("/api/reviews"),
+  reviews: () => get<{ workspaces: WorkspaceInfo[]; reviews: ReviewSummary[] }>("/api/reviews"),
   review: (key: string) => get<RReview | { failed: true; dir: string; issues: Issue[]; key: string }>(`/api/reviews/${key}`),
   view: (key: string, view: string) => get<{ view?: RView; issues: Issue[] }>(`/api/reviews/${key}/views/${view}`),
   feedback: (key: string) => get<Feedback>(`/api/reviews/${key}/feedback`),

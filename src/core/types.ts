@@ -32,6 +32,7 @@ export type RView = Omit<View, "variants"> & {
 export type ReviewSummary = {
   key: string;
   dir: string;
+  workspace?: string;
   title: string;
   status: Review["status"];
   views: { id: string; title: string }[];
@@ -40,7 +41,15 @@ export type ReviewSummary = {
   errors: number;
 };
 
-export type RReview = Review & { key: string; dir: string; viewTitles: Record<string, string>; issues: Issue[] };
+export type WorkspaceInfo = { key: string; name: string; path: string; branch?: string; registered: boolean; reviews?: number };
+
+export type RReview = Review & {
+  key: string;
+  dir: string;
+  viewTitles: Record<string, string>;
+  issues: Issue[];
+  workspace?: WorkspaceInfo;
+};
 
 export type CommentKind = "question" | "blocking" | "suggestion" | "nit" | "note" | "answer" | "verdict";
 

@@ -282,6 +282,20 @@ export function ReviewPage({ reviewKey }: { reviewKey: string }) {
           <Orb size={26} mood={moodFor(review.status).mood} label={`${moodFor(review.status).label} · All reviews`} />
         </a>
         <div className="tb-title">
+          {review.workspace && (
+            <a
+              className="crumb"
+              href={`/?ws=${encodeURIComponent(review.workspace.key)}`}
+              title={`${review.workspace.path}${review.workspace.branch ? ` · ${review.workspace.branch}` : ""}`}
+              onClick={(e) => {
+                e.preventDefault();
+                navigate(`/?ws=${encodeURIComponent(review.workspace!.key)}`);
+              }}
+            >
+              {review.workspace.name}
+              <span>/</span>
+            </a>
+          )}
           <h1 title={review.dir}>{review.title}</h1>
           <span className={`status s-${review.status}`} title={moodFor(review.status).label}>
             {review.status.replace("-", " ")}
